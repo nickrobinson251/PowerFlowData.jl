@@ -1,7 +1,7 @@
 module PowerFlowData
 
 using Parsers: Parsers, Options, xparse
-using Parsers: codes, eof, invalid, newline, peekbyte
+using Parsers: codes, eof, invalid, invaliddelimiter, newline, peekbyte
 using Tables
 using DocStringExtensions
 
@@ -154,11 +154,11 @@ function parse_network(source; first_record=1)
         pos = next_line(bytes, pos, len)
     end
 
-    nrows = guess_nrows(bytes, pos, len, options)
+    nrows = count_nrow(bytes, pos, len, options)
     @debug "bus" nrows pos
     bus, pos = parse_record!(Bus(nrows), bytes, pos, len, options)
 
-    nrows = guess_nrows(bytes, pos, len, options)
+    nrows = count_nrow(bytes, pos, len, options)
     @debug "load" nrows pos
     load, pos = parse_record!(Load(nrows), bytes, pos, len, options)
 
@@ -184,70 +184,18 @@ function parse_record!(rec::Record, bytes, pos, len, options)
     return rec, pos
 end
 
-# Taken from `CSV.detectdelimandguessrows`
-# TODO: move to Parsers.jl?
-# This is actually "count_nrow" right now..
-# TODO: Figure out how to make this a _guess_ rather actually parsing
-# all lines til we find a line starting with `0`
-function guess_nrows(buf, pos, len, options)
-    nbytes = 0
+function count_nrow(buf, pos, len, options)
     nlines = 0
-    parsedanylines = false
-    lastbytenewline = false
-    firstbyte = peekbyte(buf, pos)
-
-    oq = options.oq
-    eq = options.e
-    cq = options.cq
-
-    while pos <= len #= && nlines < 10 =# && firstbyte !== UInt8('0')
-        if lastbytenewline
-            firstbyte = peekbyte(buf, pos)
-        end
-        parsedanylines = true
-        @inbounds b = buf[pos]
-        pos += 1
-        nbytes += 1
-        if b == oq
-            while pos <= len
-                @inbounds b = buf[pos]
-                pos += 1
-                nbytes += 1
-                if b == eq
-                    if pos > len
-                        break
-                    elseif eq == cq && buf[pos] != cq
-                        break
-                    end
-                    @inbounds b = buf[pos]
-                    pos += 1
-                    nbytes += 1
-                elseif b == cq
-                    break
-                end
-            end
-        elseif b == UInt8('\n')
+    while true
+        res = xparse(String, buf, pos, len, options)
+        pos += res.tlen
+        if newline(res.code)
             nlines += 1
-            lastbytenewline = true
-        elseif b == UInt8('\r')
-            if pos <= len && buf[pos] == UInt8('\n')
-                pos += 1
-            end
-            nlines += 1
-            lastbytenewline = true
-        else
-            lastbytenewline = false
+            eof(buf, pos, len) && break
+            peekbyte(buf, pos) == UInt8('0') && break
         end
     end
-    # TODO: why does this line from Parsers.jl introduce an off-by-one error here?
-    # nlines += parsedanylines && !lastbytenewline
     return nlines
-    # TODO: make it possible to guess nrows from just parsing a few
-    # `len` here is going to give a bad estimate because different records have
-    # different number of rows, and this would anyway be an estimate for the whole file
-    # whereas we want to estimate the number of rows _in this record_.
-    # @show guess = (len - pos) / (nbytes / nlines)
-    # return isfinite(guess) ? ceil(Int, guess) : 0
 end
 
 # Taken from `Parsers.checkcmtemptylines`
