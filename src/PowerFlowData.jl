@@ -191,6 +191,64 @@ function Load(nrows)
 end
 
 """
+    Generator <: Record
+
+Each network bus to be represented as a generator or plant bus in PSS/E must be specified
+in a generator data record. In particular, each bus specified in the bus data input with a
+type code of two (2) or three (3) must have a generator data record entered for it.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct Generator <: Record
+    i::Vector{Int}
+    id::Vector{String}
+    pg::Vector{Float64}
+    qg::Vector{Float64}
+    qt::Vector{Float64}
+    qb::Vector{Float64}
+    vs::Vector{Float64}
+    ireg::Vector{Int}
+    mbase::Vector{Float64}
+    zr::Vector{Float64}
+    zx::Vector{Float64}
+    rt::Vector{Float64}
+    xt::Vector{Float64}
+    gtap::Vector{Float64}
+    stat::Vector{Int}
+    rmpct::Vector{Float64}
+    pt::Vector{Float64}
+    pb::Vector{Float64}
+    oi::Vector{Int}
+    fi::Vector{Float64}
+end
+
+function Generator(nrows)
+    return Generator(
+        Vector{Int}(undef, nrows),
+        Vector{String}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Int}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Int}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+        Vector{Int}(undef, nrows),
+        Vector{Float64}(undef, nrows),
+    )
+end
+
+"""
     Network
 
 Representation of power networks in PSS/E comprises 16 data categories of network and
@@ -203,6 +261,7 @@ struct Network
     caseid::CaseID
     bus::Bus
     load::Load
+    generator::Generator
 end
 
 ###
@@ -239,7 +298,11 @@ function parse_network(source)
     @debug "load" nrows pos
     load, pos = parse_record!(Load(nrows), bytes, pos, len, options)
 
-    return Network(caseid, bus, load)
+    nrows = count_nrow(bytes, pos, len, options)
+    @debug "gen" nrows pos
+    gen, pos = parse_record!(Generator(nrows), bytes, pos, len, options)
+
+    return Network(caseid, bus, load, gen)
 end
 
 function parse_caseid(bytes, pos, len, options)
