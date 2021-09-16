@@ -136,23 +136,23 @@ getbytes(source::Vector{UInt8}) = source, 1, length(source)
 getbytes(source::IOBuffer) = source.data, source.ptr, source.size
 getbytes(source) = getbytes(read(source))
 
-function parse_network(source; first_record=1)
+function parse_network(source)
     options = Options(
         sentinel=missing,
         openquotechar='\'',
         closequotechar='\'',
-        # comment="0", # HACK2: alternative to using `peekbyte(...); next_line(...)`
         delim=',',
     )
     bytes, pos, len = getbytes(source)
 
-    # TODO: figure out how to parse Case ID data...
-    caseid = CaseID() # placeholder
-    # HACK3: til we figure out how to parse CaseID and skip comments, just tell us where
-    # data starts...
-    for _ in 1:first_record-1
-        pos = next_line(bytes, pos, len)
-    end
+    caseid, pos = parse_caseid(bytes, pos, len, options)
+    @debug "caseid" pos
+
+    # Skip the 2 lines of comments
+    # TODO: confirm it is always only and exactly 2 lines of comments
+    pos = next_line(bytes, pos, len)
+    pos = next_line(bytes, pos, len)
+    @debug "comments" pos
 
     nrows = count_nrow(bytes, pos, len, options)
     @debug "bus" nrows pos
@@ -163,6 +163,31 @@ function parse_network(source; first_record=1)
     load, pos = parse_record!(Load(nrows), bytes, pos, len, options)
 
     return Network(caseid, bus, load)
+end
+
+function parse_caseid(bytes, pos, len, options)
+    ic, pos, code = parse_value(Int, bytes, pos, len, options)
+    @debug codes(code) pos newline=newline(code)
+
+    # Support files that have first row like:
+    # 0,   100.00          / PSS/E-30.3    WED, SEP 15 2021  21:04
+    # and those with first row like:
+    # 0,100.0,30 / PSS(tm)E-30 RAW created      Wed, Sep 15 2021 21:04
+    # TODO: avoid needing to extract `sbase` value from String?
+    sbase = Parsers.tryparse(Float64, bytes, options, pos, len)
+    if sbase === nothing
+        str, pos, code = parse_value(String, bytes, pos, len, options)
+        @debug codes(code) pos newline=newline(code)
+        sbase = parse(Float64, first(split(str, '/')))
+    end
+
+    # if delimiter after `sbase` value, then won't have reached end of line.
+    if !newline(code)
+        pos = next_line(bytes, pos, len)
+    end
+    @debug codes(code) pos newline=newline(code)
+
+    return CaseID(ic, sbase), pos
 end
 
 function parse_record!(rec::Record, bytes, pos, len, options)
@@ -224,29 +249,36 @@ function parse_row!(rec::Record, row::Int, bytes, pos, len, options)
     local code::Parsers.ReturnCode
     for col in 1:ncols
         eltyp = eltype(fieldtype(typeof(rec), col))
-        res = xparse(eltyp, bytes, pos, len, options)
-
-        if invalid(res.code)
-            # for the last column, there might be end-of-line comments;
-            # so if last column and hit invaliddelimiter, that is fine.
-            # !!! warning: this won't work if last column is a StringType
-            if !(col == ncols && invaliddelimiter(res.code))
-                @warn codes(res.code) pos col
-            end
-        end
-
-        if eltyp <: AbstractString
-            @inbounds getfield(rec, col)[row] = Parsers.getstring(bytes, res.val, options.e)
-        else
-            @inbounds getfield(rec, col)[row] = res.val
-        end
-
-        pos += res.tlen
-        code = res.code
+        eol = col == ncols
+        val, pos, code = parse_value(eltyp, bytes, pos, len, options, eol)
+        @inbounds getfield(rec, col)[row] = val
 
         @debug codes(code) row col pos newline=newline(code)
     end
     return pos, code
+end
+
+function parse_value(T, bytes, pos, len, options, eol=false)
+    res = xparse(T, bytes, pos, len, options)
+
+    if invalid(res.code)
+        # for the last column, there might be end-of-line comments;
+        # so if last column and hit invaliddelimiter, that is fine.
+        # !!! warning: this won't work if last column is a StringType
+        if !eol && !invaliddelimiter(res.code)
+            @warn codes(res.code) pos col
+        end
+    end
+
+    pos += res.tlen
+    code = res.code
+
+    val = if T <: AbstractString
+        Parsers.getstring(bytes, res.val, options.e)
+    else
+        res.val
+    end
+    return val, pos, code
 end
 
 end  # module
