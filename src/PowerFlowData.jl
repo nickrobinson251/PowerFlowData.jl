@@ -11,8 +11,8 @@ export parse_network
 
 # for easier local development
 export getbytes, getstring
-export parse_record
-export CaseID, Bus, Load
+export parse_records
+export CaseID, Buses, Loads
 
 
 ###
@@ -43,19 +43,19 @@ end
 
 CaseID() = CaseID(0, 100.0)
 
-# So all tabular data records (bus, load, ...) can be handled the same.
-abstract type Record end
+# So all tabular data records (buses, loads, ...) can be handled the same.
+abstract type Records end
 
 # Store data in column table so conversion to DataFrame efficient.
-Tables.istable(::Type{Record}) = true
-Tables.columnaccess(::Type{Record}) = true
-Tables.columns(x::Record) = x
-Tables.getcolumn(x::Record, i::Int) = getfield(x, i)
-Tables.columnnames(x::R) where {R <: Record} = fieldnames(R)
-Tables.schema(x::R) where {R <: Record} = Tables.Schema(fieldnames(R), fieldtypes(R))
+Tables.istable(::Type{Records}) = true
+Tables.columnaccess(::Type{Records}) = true
+Tables.columns(x::Records) = x
+Tables.getcolumn(x::Records, i::Int) = getfield(x, i)
+Tables.columnnames(x::R) where {R <: Records} = fieldnames(R)
+Tables.schema(x::R) where {R <: Records} = Tables.Schema(fieldnames(R), fieldtypes(R))
 
 """
-    Bus <: Record
+    Buses <: Records
 
 Each network bus to be represented in PSS/E is introduced through a bus data record.
 Each bus data record includes not only data for the basic bus properties but also includes
@@ -67,7 +67,7 @@ transformer magnetizing impedance, all of which are entered in other data catego
 # Fields
 $TYPEDFIELDS
 """
-struct Bus <: Record
+struct Buses <: Records
     "Bus number (1 to 999997)."
     i::Vector{Int}
     """
@@ -113,8 +113,8 @@ struct Bus <: Record
     owner::Vector{Int}
 end
 
-function Bus(nrows)
-    return Bus(
+function Buses(nrows)
+    return Buses(
         Vector{Int}(undef, nrows),
         Vector{String}(undef, nrows),
         Vector{Float64}(undef, nrows),
@@ -130,7 +130,7 @@ function Bus(nrows)
 end
 
 """
-    Load <: Record
+    Loads <: Records
 
 Each network bus at which a load is to be represented must be specified in at least one load
 data record. If multiple loads are to be represented at a bus, they must be individually
@@ -140,8 +140,8 @@ Each load at a bus can be a mixture of loads with different characteristics.
 # Fields
 $TYPEDFIELDS
 """
-struct Load <: Record
-    "Bus number, or extended bus name enclosed in single quotes."
+struct Loads <: Records
+    "Buses number, or extended buses name enclosed in single quotes."
     i::Vector{Int}
     """
     One- or two-character uppercase non blank alphanumeric load identifier used to distinguish among multiple loads at bus "I".
@@ -173,8 +173,8 @@ struct Load <: Record
     owner::Vector{Int}
 end
 
-function Load(nrows)
-    return Load(
+function Loads(nrows)
+    return Loads(
         Vector{Int}(undef, nrows),
         Vector{String}(undef, nrows),
         Vector{Float64}(undef, nrows),
@@ -191,7 +191,7 @@ function Load(nrows)
 end
 
 """
-    Generator <: Record
+    Generators <: Records
 
 Each network bus to be represented as a generator or plant bus in PSS/E must be specified
 in a generator data record. In particular, each bus specified in the bus data input with a
@@ -200,7 +200,7 @@ type code of two (2) or three (3) must have a generator data record entered for 
 # Fields
 $TYPEDFIELDS
 """
-struct Generator <: Record
+struct Generators <: Records
     i::Vector{Int}
     id::Vector{String}
     pg::Vector{Float64}
@@ -223,8 +223,8 @@ struct Generator <: Record
     fi::Vector{Float64}
 end
 
-function Generator(nrows)
-    return Generator(
+function Generators(nrows)
+    return Generators(
         Vector{Int}(undef, nrows),
         Vector{String}(undef, nrows),
         Vector{Float64}(undef, nrows),
@@ -254,14 +254,14 @@ end
 Representation of power networks in PSS/E comprises 16 data categories of network and
 equipment elements, each of which requires a particular type of data:
 1. [`CaseID`](@ref)
-1. [`Bus`](@ref)
-1. [`Load`](@ref)
+1. [`Buses`](@ref)
+1. [`Loads`](@ref)
 """
 struct Network
     caseid::CaseID
-    bus::Bus
-    load::Load
-    generator::Generator
+    buses::Buses
+    loads::Loads
+    generators::Generators
 end
 
 ###
@@ -291,18 +291,18 @@ function parse_network(source)
     @debug "comments" pos
 
     nrows = count_nrow(bytes, pos, len, options)
-    @debug "bus" nrows pos
-    bus, pos = parse_record!(Bus(nrows), bytes, pos, len, options)
+    @debug "buses" nrows pos
+    buses, pos = parse_records!(Buses(nrows), bytes, pos, len, options)
 
     nrows = count_nrow(bytes, pos, len, options)
-    @debug "load" nrows pos
-    load, pos = parse_record!(Load(nrows), bytes, pos, len, options)
+    @debug "loads" nrows pos
+    loads, pos = parse_records!(Loads(nrows), bytes, pos, len, options)
 
     nrows = count_nrow(bytes, pos, len, options)
-    @debug "gen" nrows pos
-    gen, pos = parse_record!(Generator(nrows), bytes, pos, len, options)
+    @debug "gens" nrows pos
+    gens, pos = parse_records!(Generators(nrows), bytes, pos, len, options)
 
-    return Network(caseid, bus, load, gen)
+    return Network(caseid, buses, loads, gens)
 end
 
 function parse_caseid(bytes, pos, len, options)
@@ -330,7 +330,7 @@ function parse_caseid(bytes, pos, len, options)
     return CaseID(ic, sbase), pos
 end
 
-function parse_record!(rec::Record, bytes, pos, len, options)
+function parse_records!(rec::Records, bytes, pos, len, options)
     nrows = length(getfield(rec, 1))
     for row in 1:nrows
         pos, code = parse_row!(rec, row, bytes, pos, len, options)
@@ -384,7 +384,7 @@ function next_line(bytes, pos, len)
     return pos
 end
 
-function parse_row!(rec::Record, row::Int, bytes, pos, len, options)
+function parse_row!(rec::Records, row::Int, bytes, pos, len, options)
     ncols = nfields(rec)
     local code::Parsers.ReturnCode
     for col in 1:ncols
@@ -425,4 +425,4 @@ end  # module
 
 # # Usage:
 # network = Network("filename.raw")
-# df = DataFrame(network.bus)
+# df = DataFrame(network.buses)
