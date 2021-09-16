@@ -260,10 +260,10 @@ function next_line(bytes, pos, len)
         eof(bytes, pos, len) && break
         b = peekbyte(bytes, pos)
     end
-    # Move forward to be at the `\r` or `\n` byte.
+    # Move forward to be past the `\r` or `\n` byte.
     pos += 1
     Parsers.incr!(bytes)
-    # if line ends `\r\n` and we're at `\r`, move forward.
+    # if line ends `\r\n`, then we're at `\n`and need to move forward again.
     if b === UInt8('\r') && !eof(bytes, pos, len) && peekbyte(bytes, pos) === UInt8('\n')
         pos += 1
         Parsers.incr!(bytes)
