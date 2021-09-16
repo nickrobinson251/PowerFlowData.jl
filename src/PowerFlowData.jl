@@ -28,7 +28,7 @@ export CaseID, Bus, Load
     CaseID
 
 # Fields
-$(TYPEDFIELDS)
+$TYPEDFIELDS
 """
 struct CaseID
     """
@@ -57,8 +57,15 @@ Tables.schema(x::R) where {R <: Record} = Tables.Schema(fieldnames(R), fieldtype
 """
     Bus <: Record
 
+Each network bus to be represented in PSS/E is introduced through a bus data record.
+Each bus data record includes not only data for the basic bus properties but also includes
+information on an optionally connected shunt admittance to ground. That admittance can
+represent a shunt capacitor or a shunt reactor (both with or without a real component) or a
+shunt resistor. It must not represent line connected admittance, loads, line charging or
+transformer magnetizing impedance, all of which are entered in other data categories.
+
 # Fields
-$(TYPEDFIELDS)
+$TYPEDFIELDS
 """
 struct Bus <: Record
     "Bus number (1 to 999997)."
@@ -125,8 +132,13 @@ end
 """
     Load <: Record
 
+Each network bus at which a load is to be represented must be specified in at least one load
+data record. If multiple loads are to be represented at a bus, they must be individually
+identified in a load data record for the bus with a different load identifier.
+Each load at a bus can be a mixture of loads with different characteristics.
+
 # Fields
-$(TYPEDFIELDS)
+$TYPEDFIELDS
 """
 struct Load <: Record
     "Bus number, or extended bus name enclosed in single quotes."
@@ -178,6 +190,15 @@ function Load(nrows)
     )
 end
 
+"""
+    Network
+
+Representation of power networks in PSS/E comprises 16 data categories of network and
+equipment elements, each of which requires a particular type of data:
+1. [`CaseID`](@ref)
+1. [`Bus`](@ref)
+1. [`Load`](@ref)
+"""
 struct Network
     caseid::CaseID
     bus::Bus
