@@ -166,22 +166,12 @@ function parse_network(source; first_record=1)
 end
 
 function parse_record!(rec::Record, bytes, pos, len, options)
-    # HACK1: avoid end-of-line comments, e.g. `/* comments */`, by setting "/" as delimiter
-    # TODO: change Parsers.jl to handle rows having end-of-line comments
-    eol_options = Options(
-        sentinel=missing,
-        openquotechar='\'',
-        closequotechar='\'',
-        # comment="0", # HACK2: alternative to using `peekbyte(...); next_line(...)`
-        delim='/',
-    )
     nrows = length(getfield(rec, 1))
     for row in 1:nrows
-        pos, code = parse_row!(rec, row, bytes, pos, len, options, eol_options)
+        pos, code = parse_row!(rec, row, bytes, pos, len, options)
 
-        # HACK1 continued: Because we're introducing a delimiter to workaround EOL comments,
-        # rows with comments won't have hit the newline character yet, and
-        # we need to run `xparse` again to get to the newline
+        # Because we're working around end-of-line comments,
+        # rows with comments won't have hit the newline character yet
         if !newline(code)
             pos = next_line(bytes, pos, len)
         end
@@ -281,15 +271,22 @@ function next_line(bytes, pos, len)
     return pos
 end
 
-function parse_row!(rec::Record, row::Int, bytes, pos, len, options, eol_options)
+function parse_row!(rec::Record, row::Int, bytes, pos, len, options)
     ncols = nfields(rec)
     local code::Parsers.ReturnCode
     for col in 1:ncols
-        opts = col == ncols ? eol_options : options  # see HACK1
         eltyp = eltype(fieldtype(typeof(rec), col))
-        res = xparse(eltyp, bytes, pos, len, opts)
+        res = xparse(eltyp, bytes, pos, len, options)
 
-        invalid(res.code) && @warn "invalid" codes(res.code) pos col
+        if invalid(res.code)
+            # for the last column, there might be end-of-line comments;
+            # so if last column and hit invaliddelimiter, that is fine.
+            # !!! warning: this won't work if last column is a StringType
+            if !(col == ncols && invaliddelimiter(res.code))
+                @warn codes(res.code) pos col
+            end
+        end
+
         if eltyp <: AbstractString
             @inbounds getfield(rec, col)[row] = Parsers.getstring(bytes, res.val, options.e)
         else
