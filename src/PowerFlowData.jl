@@ -1,6 +1,7 @@
 module PowerFlowData
 
-using Parsers
+using Parsers: Parsers, Options, xparse
+using Parsers: codes, eof, invalid, newline, peekbyte
 using Tables
 using DocStringExtensions
 
@@ -18,6 +19,11 @@ export CaseID, Bus, Load
 ### types
 ###
 
+# TODO: should the various bits of free text / comments / timestamps be in this struct?
+# Data can look like:
+# 0,   100.00          / PSS/E-30.3    WED, SEP 15 2021  21:04
+#    SE SNAPSHOT 09-15-2021 PEAK CASE 18:00
+#    FULL COPY OF ETC.
 struct CaseID
     ic::Int
     sbase::Float64
@@ -130,27 +136,32 @@ getbytes(source::Vector{UInt8}) = source, 1, length(source)
 getbytes(source::IOBuffer) = source.data, source.ptr, source.size
 getbytes(source) = getbytes(read(source))
 
-function parse_network(source)
-    options = Parsers.Options(
+function parse_network(source; first_record=1)
+    options = Options(
         sentinel=missing,
         openquotechar='\'',
         closequotechar='\'',
-        # comment="0", # HACK2: alternative to using `peekbyte(...); consume_line(...)`
+        # comment="0", # HACK2: alternative to using `peekbyte(...); next_line(...)`
         delim=',',
     )
     bytes, pos, len = getbytes(source)
 
     # TODO: figure out how to parse Case ID data...
     caseid = CaseID() # placeholder
+    # HACK3: til we figure out how to parse CaseID and skip comments, just tell us where
+    # data starts...
+    for _ in 1:first_record-1
+        pos = next_line(bytes, pos, len)
+    end
 
     # TODO: figure out how to estimate number of rows in the card
     # nrows = estimate_nrows(bytes, pos, len, options)
     nrows = 3
     bus, pos = parse_record!(Bus(nrows), bytes, pos, len, options)
 
-    nrows = 2
-    load, pos = parse_record!(Load(nrows), bytes, pos, len, options)
-    # load = Load(0)
+    # nrows = 2
+    # load, pos = parse_record!(Load(nrows), bytes, pos, len, options)
+    load = Load(0)
 
     return Network(caseid, bus, load)
 end
@@ -158,11 +169,11 @@ end
 function parse_record!(rec::Record, bytes, pos, len, options)
     # HACK1: avoid end-of-line comments, e.g. `/* comments */`, by setting "/" as delimiter
     # TODO: change Parsers.jl to handle rows having end-of-line comments
-    eol_options = Parsers.Options(
+    eol_options = Options(
         sentinel=missing,
         openquotechar='\'',
         closequotechar='\'',
-        # comment="0", # HACK2: alternative to using `peekbyte(...); consume_line(...)`
+        # comment="0", # HACK2: alternative to using `peekbyte(...); next_line(...)`
         delim='/',
     )
     nrows = length(getfield(rec, 1))
@@ -172,22 +183,37 @@ function parse_record!(rec::Record, bytes, pos, len, options)
         # HACK1 continued: Because we're introducing a delimiter to workaround EOL comments,
         # rows with comments won't have hit the newline character yet, and
         # we need to run `xparse` again to get to the newline
-        if !Parsers.newline(code)
-            pos += consume_line(bytes, pos, len, options)
+        if !newline(code)
+            pos = next_line(bytes, pos, len)
         end
     end
 
     # Data input is terminated by specifying a bus number of zero.
-    @assert Parsers.peekbyte(bytes, pos) === UInt8('0')
-    pos += consume_line(bytes, pos, len, options)
+    # @assert peekbyte(bytes, pos) === UInt8('0')
+    peekbyte(bytes, pos) === UInt8('0') || @warn "not at end of card"
+    pos = next_line(bytes, pos, len)
     return rec, pos
 end
 
-function consume_line(bytes, pos, len, options)
-    res = Parsers.xparse(String, bytes, pos, len, options)
-
-    @debug Parsers.codes(res.code) newline=Parsers.newline(res.code) string=Parsers.getstring(bytes, res.val, options.e)
-    return res.tlen
+# Taken from Parsers.checkcmtemptylines
+# TODO: move to Parsers.jl?
+function next_line(bytes, pos, len)
+    b = peekbyte(bytes, pos)
+    while b !== UInt8('\n') && b !== UInt8('\r')
+        pos += 1
+        Parsers.incr!(bytes)  # TODO: not needed if not in Parsers.jl as got Vec{UInt8}?
+        eof(bytes, pos, len) && break
+        b = peekbyte(bytes, pos)
+    end
+    # Move forward to be at the `\r` or `\n` byte.
+    pos += 1
+    Parsers.incr!(bytes)
+    # if line ends `\r\n` and we're at `\r`, move forward.
+    if b === UInt8('\r') && !eof(bytes, pos, len) && peekbyte(bytes, pos) === UInt8('\n')
+        pos += 1
+        Parsers.incr!(bytes)
+    end
+    return pos
 end
 
 function parse_row!(rec::Record, row::Int, bytes, pos, len, options, eol_options)
@@ -196,9 +222,9 @@ function parse_row!(rec::Record, row::Int, bytes, pos, len, options, eol_options
     for col in 1:ncols
         opts = col == ncols ? eol_options : options  # see HACK1
         eltyp = eltype(fieldtype(typeof(rec), col))
-        res = Parsers.xparse(eltyp, bytes, pos, len, opts)
+        res = xparse(eltyp, bytes, pos, len, opts)
 
-        Parsers.invalid(res.code) && @warn "invalid" Parsers.codes(res.code) pos col
+        invalid(res.code) && @warn "invalid" codes(res.code) pos col
         if eltyp <: AbstractString
             @inbounds getfield(rec, col)[row] = Parsers.getstring(bytes, res.val, options.e)
         else
@@ -208,7 +234,7 @@ function parse_row!(rec::Record, row::Int, bytes, pos, len, options, eol_options
         pos += res.tlen
         code = res.code
 
-        @debug Parsers.codes(code) row col pos newline=Parsers.newline(code)
+        @debug codes(code) row col pos newline=newline(code)
     end
     return pos, code
 end
