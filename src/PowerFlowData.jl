@@ -24,8 +24,20 @@ export CaseID, Bus, Load
 # 0,   100.00          / PSS/E-30.3    WED, SEP 15 2021  21:04
 #    SE SNAPSHOT 09-15-2021 PEAK CASE 18:00
 #    FULL COPY OF ETC.
+"""
+    CaseID
+
+# Fields
+$(TYPEDFIELDS)
+"""
 struct CaseID
+    """
+    IC Change code:
+    0 - base case (i.e., clear the working case before adding data to it)
+    1 - add data to the working case
+    """
     ic::Int
+    "System base MVA."
     sbase::Float64
 end
 
@@ -42,17 +54,55 @@ Tables.getcolumn(x::Record, i::Int) = getfield(x, i)
 Tables.columnnames(x::R) where {R <: Record} = fieldnames(R)
 Tables.schema(x::R) where {R <: Record} = Tables.Schema(fieldnames(R), fieldtypes(R))
 
+"""
+    Bus <: Record
+
+# Fields
+$(TYPEDFIELDS)
+"""
 struct Bus <: Record
+    "Bus number (1 to 999997)."
     i::Vector{Int}
+    """
+    Alphanumeric identifier assigned to bus "I".
+    The name may be up to twelve characters and must be enclosed in single quotes.
+    NAME may contain any combination of blanks, uppercase letters, numbers and special characters, but the first character must not be a minus sign.
+    """
     name::Vector{String}
+    "Bus base voltage; entered in kV."
     basekv::Vector{Float64}
+    """
+    Bus type code:
+    1 - load bus or other bus without any generator boundary condition.
+    2 - generator or plant bus either regulating voltage or with a fixed reactive power (Mvar).
+    A generator that reaches its reactive power limit will no longer control voltage but rather hold reactive power at its limit.
+    3 - swing bus or slack bus.
+    It has no power or reactive limits and regulates voltage at a fixed reference angle.
+    4 - disconnected or isolated bus.
+    """
     ide::Vector{Int}
+    """
+    Active component of shunt admittance to ground; entered in MW at one per unit voltage.
+    GL should not include any resistive admittance load, which is entered as part of load data.
+    """
     gl::Vector{Float64}
+    """
+    Reactive component of shunt admittance to ground; entered in Mvar at one per unit voltage.
+    BL should not include any reactive impedance load, which is entered as part of load data;
+    line charging and line connected shunts, which are entered as part of non-transformer branch data;
+    or transformer magnetizing admittance, which is entered as part of transformer data.
+    BL is positive for a capacitor, and negative for a reactor or an inductive load.
+    """
     bl::Vector{Float64}
+    "Area number. 1 through the maximum number of areas at the current size level."
     area::Vector{Int}
+    "Zone number. 1 through the maximum number of zones at the current size level."
     zone::Vector{Int}
+    "Bus voltage magnitude; entered in pu."
     vm::Vector{Float64}
+    "Bus voltage phase angle; entered in degrees."
     va::Vector{Float64}
+    "Owner number. 1 through the maximum number of owners at the current size level."
     owner::Vector{Int}
 end
 
@@ -81,7 +131,10 @@ $(TYPEDFIELDS)
 struct Load <: Record
     "Bus number, or extended bus name enclosed in single quotes."
     i::Vector{Int}
-    "One- or two-character uppercase non blank alphanumeric load identifier used to distinguish among multiple loads at bus 'I'. It is recommended that, at buses for which a single load is present, the load be designated as having the load identifier '1'."
+    """
+    One- or two-character uppercase non blank alphanumeric load identifier used to distinguish among multiple loads at bus "I".
+    It is recommended that, at buses for which a single load is present, the load be designated as having the load identifier '1'.
+    """
     id::Vector{String}
     "Initial load status of one for in-service and zero for out-of-service."
     status::Vector{Float64}
@@ -99,7 +152,10 @@ struct Load <: Record
     iq::Vector{Float64}
     "Active power component of constant admittance load; entered in MW at one per unit voltage."
     yp::Vector{Float64}
-    "Reactive power component of constant admittance load; entered in Mvar at one per unit voltage. YQ is a negative quantity for an inductive load and positive for a capacitive load."
+    """
+    Reactive power component of constant admittance load; entered in Mvar at one per unit voltage.
+    YQ is a negative quantity for an inductive load and positive for a capacitive load.
+    """
     yq::Vector{Float64}
     "Owner to which the load is assigned (1 through the maximum number of owners at the current size level)."
     owner::Vector{Int}
