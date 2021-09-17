@@ -5,17 +5,13 @@ DocMeta.setdocmeta!(PowerFlowData, :DocTestSetup, :(using PowerFlowData); recurs
 
 makedocs(;
     modules=[PowerFlowData],
-    authors="Nick Robinson <nicholas.robinson@invenialabs.co.uk> and contributors",
+    authors="Nick Robinson <npr251@gmail.com> and contributors",
     repo="https://github.com/nickrobinson251/PowerFlowData.jl/blob/{commit}{path}#{line}",
     sitename="PowerFlowData.jl",
-    format=Documenter.HTML(;
-        prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://nickrobinson251.github.io/PowerFlowData.jl",
-        assets=String[],
-    ),
-    pages=[
-        "Home" => "index.md",
-    ],
+    format=Documenter.HTML(canonical="https://nickrobinson251.github.io/PowerFlowData.jl"),
+    pages=["Home" => "index.md" ],
+    strict=true,
+    checkdocs=:exports,
 )
 
 deploydocs(;

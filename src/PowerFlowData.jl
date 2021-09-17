@@ -25,7 +25,7 @@ export CaseID, Buses, Loads, Generators
 #    SE SNAPSHOT 09-15-2021 PEAK CASE 18:00
 #    FULL COPY OF ETC.
 """
-    CaseID
+    $TYPEDEF
 
 # Fields
 $TYPEDFIELDS
@@ -33,8 +33,8 @@ $TYPEDFIELDS
 struct CaseID <: Tables.AbstractRow
     """
     IC Change code:
-    0 - base case (i.e., clear the working case before adding data to it)
-    1 - add data to the working case
+    0 - base case (i.e., clear the working case before adding data to it).
+    1 - add data to the working case.
     """
     ic::Int
     "System base MVA."
@@ -59,7 +59,7 @@ Tables.columnnames(x::R) where {R <: Records} = fieldnames(R)
 Tables.schema(x::R) where {R <: Records} = Tables.Schema(fieldnames(R), fieldtypes(R))
 
 """
-    Buses <: Records
+    $TYPEDEF
 
 Each network bus to be represented in PSS/E is introduced through a bus data record.
 Each bus data record includes not only data for the basic bus properties but also includes
@@ -134,7 +134,7 @@ function Buses(nrows)
 end
 
 """
-    Loads <: Records
+    $TYPEDEF
 
 Each network bus at which a load is to be represented must be specified in at least one load
 data record. If multiple loads are to be represented at a bus, they must be individually
@@ -195,7 +195,7 @@ function Loads(nrows)
 end
 
 """
-    Generators <: Records
+    $TYPEDEF
 
 Each network bus to be represented as a generator or plant bus in PSS/E must be specified
 in a generator data record. In particular, each bus specified in the bus data input with a
@@ -336,18 +336,42 @@ end
 """
     Network
 
-Representation of power networks in PSS/E comprises 16 data categories of network and
-equipment elements, each of which requires a particular type of data.
+Representation of a power network.
+
+The PSS/E data format comprises 16 data categories of network and equipment
+elements, each of which requires a particular type of data.
+
+Similarly, a `Network` stores the data from each category in its own dedicated structure.
+
 Currently supported are:
 1. [`CaseID`](@ref)
 1. [`Buses`](@ref)
 1. [`Loads`](@ref)
 1. [`Generators`](@ref)
+
+`CaseID` data is a single row (in the Tables.jl-sense).
+You can access it like `network.caseid` and interact with it like a `NamedTuple`,
+or even convert it to a `NamedTuple` with `NamedTuple(caseid)`.
+
+All other records (buses, loads, etc.) can be accessed also via the fields, for example
+`network.buses`, and each is returned as lightweight table structure (again, in the Tables.jl-sense).
+That is, all structures implement the Tables.jl interface, so can be passed to any valid
+sink, such as a `DataFrame` like `DataFrame(network.buses)`.
+
+For more info on working with tables see [Tables.jl](https://tables.juliadata.org/), and for
+common table operations see [TableOperations.jl](https://github.com/JuliaData/TableOperations.jl).
+
+# Fields
+$TYPEDFIELDS
 """
 struct Network
+    "Case identification data."
     caseid::CaseID
+    "Bus records."
     buses::Buses
+    "Load records."
     loads::Loads
+    "Generator records."
     generators::Generators
 end
 
@@ -359,6 +383,11 @@ getbytes(source::Vector{UInt8}) = source, 1, length(source)
 getbytes(source::IOBuffer) = source.data, source.ptr, source.size
 getbytes(source) = getbytes(read(source))
 
+"""
+    parse_network(source) -> Network
+
+Read a PSS/E-format `.raw` Power Flow Data file and return a [`Network`](@ref) object.
+"""
 function parse_network(source)
     options = Options(
         sentinel=missing,
@@ -523,7 +552,3 @@ function parse_value(T, bytes, pos, len, options, eol=false)
 end
 
 end  # module
-
-# # Usage:
-# network = Network("filename.raw")
-# df = DataFrame(network.buses)
