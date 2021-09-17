@@ -407,7 +407,13 @@ function parse_row!(rec::Records, row::Int, bytes, pos, len, options)
 end
 
 function parse_value(T, bytes, pos, len, options, eol=false)
-    res = xparse(T, bytes, pos, len, options)
+    opts = !eol ? options : Options(
+        sentinel=missing,
+        openquotechar='\'',
+        closequotechar='\'',
+        delim='/',  # change delimiter as way to handle end-of-line comments
+    )
+    res = xparse(T, bytes, pos, len, opts)
 
     if invalid(res.code)
         # for the last column, there might be end-of-line comments;
@@ -422,7 +428,7 @@ function parse_value(T, bytes, pos, len, options, eol=false)
     code = res.code
 
     val = if T <: AbstractString
-        Parsers.getstring(bytes, res.val, options.e)
+        Parsers.getstring(bytes, res.val, opts.e)
     else
         res.val
     end

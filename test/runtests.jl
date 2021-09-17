@@ -40,14 +40,18 @@ using Test
         @test caseid.ic == 0
         @test caseid.sbase == 100.0
 
+        # Test first and last columns are parsed as expected
         buses = net1.buses
         @test buses.i == [111, 112, 113]
+        @test buses.owner == [1, 2, 2]
 
         loads = net1.loads
         @test loads.i == [111, 113]
+        @test loads.owner == [1, 2]
 
         gens = net1.generators
         @test gens.i == [111, -112, 113]
+        @test gens.fi == [1.0, 1.0, 1.0]
     end
 
     @testset "v29 file" begin
@@ -57,6 +61,7 @@ using Test
         @test caseid.ic == 0
         @test caseid.sbase == 100.0
 
+        # Test first and last columns are parsed as expected
         buses = net2.buses
         @test buses.i == [1, 222222]
         @test buses.owner == [1, 7]
@@ -67,5 +72,6 @@ using Test
 
         gens = net2.generators
         @test gens.i == [104]
+        @test gens.fi == [1.0]
     end
 end
