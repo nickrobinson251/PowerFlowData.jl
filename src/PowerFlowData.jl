@@ -332,6 +332,7 @@ end
 
 function parse_records!(rec::Records, bytes, pos, len, options)
     nrows = length(getfield(rec, 1))
+    nrows == 0 && return rec, pos
     for row in 1:nrows
         pos, code = parse_row!(rec, row, bytes, pos, len, options)
 
@@ -343,21 +344,27 @@ function parse_records!(rec::Records, bytes, pos, len, options)
     end
 
     # Data input is terminated by specifying a bus number of zero.
-    # @assert peekbyte(bytes, pos) === UInt8('0')
-    peekbyte(bytes, pos) === UInt8('0') || @warn "not at end of card"
+    # @assert peekbyte(bytes, pos) == UInt8('0')
+    if !(eof(bytes, pos, len) || peekbyte(bytes, pos) == UInt8('0'))
+        @warn "Not at end of $(typeof(rec)) records"
+    end
     pos = next_line(bytes, pos, len)
     return rec, pos
 end
 
 function count_nrow(buf, pos, len, options)
     nlines = 0
+    if eof(buf, pos, len) || peekbyte(buf, pos) == UInt8('0')
+        return nlines
+    end
     while true
         res = xparse(String, buf, pos, len, options)
         pos += res.tlen
         if newline(res.code)
             nlines += 1
-            eof(buf, pos, len) && break
-            peekbyte(buf, pos) == UInt8('0') && break
+            if eof(buf, pos, len) || peekbyte(buf, pos) == UInt8('0')
+                break
+            end
         end
     end
     return nlines
@@ -366,6 +373,7 @@ end
 # Taken from `Parsers.checkcmtemptylines`
 # TODO: move to Parsers.jl?
 function next_line(bytes, pos, len)
+    eof(bytes, pos, len) && return pos
     b = peekbyte(bytes, pos)
     while b !== UInt8('\n') && b !== UInt8('\r')
         pos += 1
