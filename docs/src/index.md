@@ -4,10 +4,7 @@ CurrentModule = PowerFlowData
 
 # PowerFlowData
 
-Documentation for [PowerFlowData](https://github.com/nickrobinson251/PowerFlowData.jl).
-
-```@index
-```
+Documentation for [PowerFlowData.jl](https://github.com/nickrobinson251/PowerFlowData.jl).
 
 ```@autodocs
 Modules = [PowerFlowData]

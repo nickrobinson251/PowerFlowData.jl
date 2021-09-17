@@ -333,10 +333,12 @@ end
     Network
 
 Representation of power networks in PSS/E comprises 16 data categories of network and
-equipment elements, each of which requires a particular type of data:
+equipment elements, each of which requires a particular type of data.
+Currently supported are:
 1. [`CaseID`](@ref)
 1. [`Buses`](@ref)
 1. [`Loads`](@ref)
+1. [`Generators`](@ref)
 """
 struct Network
     caseid::CaseID
