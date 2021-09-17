@@ -16,4 +16,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/nickrobinson251/PowerFlowData.jl",
+    push_preview=true,
 )
