@@ -12,7 +12,7 @@ export parse_network
 # for easier local development
 export getbytes, getstring
 export parse_records
-export CaseID, Buses, Loads
+export CaseID, Buses, Loads, Generators
 
 
 ###
@@ -47,8 +47,8 @@ CaseID() = CaseID(0, 100.0)
 abstract type Records end
 
 # Store data in column table so conversion to DataFrame efficient.
-Tables.istable(::Type{Records}) = true
-Tables.columnaccess(::Type{Records}) = true
+Tables.istable(::Type{<:Records}) = true
+Tables.columnaccess(::Type{<:Records}) = true
 Tables.columns(x::Records) = x
 Tables.getcolumn(x::Records, i::Int) = getfield(x, i)
 Tables.columnnames(x::R) where {R <: Records} = fieldnames(R)
