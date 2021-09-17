@@ -6,7 +6,7 @@ using Test
 @testset "PowerFlowData.jl" begin
 
     @testset "Tables interface" begin
-        struct TestRecs <: Records
+        struct TestRecs <: PowerFlowData.Records
             x1::Vector{Int}
             yy::Vector{Float64}
         end
@@ -27,7 +27,7 @@ using Test
         @test size(df) == (3, 2)
 
         for T in (Buses, Loads, Generators)
-            @test T <: Records
+            @test T <: PowerFlowData.Records
             @test Tables.istable(T)
         end
     end
