@@ -30,7 +30,7 @@ export CaseID, Buses, Loads, Generators
 # Fields
 $TYPEDFIELDS
 """
-struct CaseID
+struct CaseID <: Tables.AbstractRow
     """
     IC Change code:
     0 - base case (i.e., clear the working case before adding data to it)
@@ -42,6 +42,10 @@ struct CaseID
 end
 
 CaseID() = CaseID(0, 100.0)
+
+Tables.columnnames(::CaseID) = fieldnames(CaseID)
+Tables.getcolumn(cid::CaseID, i::Int) = getfield(cid, i)
+Tables.getcolumn(cid::CaseID, nm::Symbol) = getfield(cid, nm)
 
 # So all tabular data records (buses, loads, ...) can be handled the same.
 abstract type Records end

@@ -30,6 +30,11 @@ using Test
             @test T <: PowerFlowData.Records
             @test Tables.istable(T)
         end
+
+        caseid = CaseID(0, 100.0)
+        @test caseid[1] == caseid[:ic]
+        @test caseid[2] == caseid[:sbase]
+        @test NamedTuple(caseid) == (ic=0, sbase=100.0)
     end
 
     @testset "v30 file" begin
