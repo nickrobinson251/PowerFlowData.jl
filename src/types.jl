@@ -19,7 +19,7 @@ struct CaseID <: Tables.AbstractRow
     0 - base case (i.e., clear the working case before adding data to it).
     1 - add data to the working case.
     """
-    ic::Int
+    ic::Int8
     "System base MVA."
     sbase::Float64
 end
@@ -32,6 +32,10 @@ Tables.getcolumn(cid::CaseID, nm::Symbol) = getfield(cid, nm)
 
 # So all tabular data records (buses, loads, ...) can be handled the same.
 abstract type Records end
+
+# Create a instance of a `Records` subtype, with all fields (assumed to be Vector)
+# containing `nrow` elements (initialised to undefined values, as they'll be overwritten).
+(::Type{R})(nrow) where {R <: Records} = R(map(T -> T(undef, nrow), fieldtypes(R))...)
 
 # Store data in column table so conversion to DataFrame efficient.
 Tables.istable(::Type{<:Records}) = true
@@ -56,13 +60,13 @@ $TYPEDFIELDS
 """
 struct Buses <: Records
     "Bus number (1 to 999997)."
-    i::Vector{Int}
+    i::Vector{Int32}
     """
     Alphanumeric identifier assigned to bus "I".
     The name may be up to twelve characters and must be enclosed in single quotes.
     NAME may contain any combination of blanks, uppercase letters, numbers and special characters, but the first character must not be a minus sign.
     """
-    name::Vector{String}
+    name::Vector{InlineString15}
     "Bus base voltage; entered in kV."
     basekv::Vector{Float64}
     """
@@ -74,7 +78,7 @@ struct Buses <: Records
     It has no power or reactive limits and regulates voltage at a fixed reference angle.
     4 - disconnected or isolated bus.
     """
-    ide::Vector{Int}
+    ide::Vector{Int8}
     """
     Active component of shunt admittance to ground; entered in MW at one per unit voltage.
     GL should not include any resistive admittance load, which is entered as part of load data.
@@ -89,31 +93,15 @@ struct Buses <: Records
     """
     bl::Vector{Float64}
     "Area number. 1 through the maximum number of areas at the current size level."
-    area::Vector{Int}
+    area::Vector{Int16}
     "Zone number. 1 through the maximum number of zones at the current size level."
-    zone::Vector{Int}
+    zone::Vector{Int16}
     "Bus voltage magnitude; entered in pu."
     vm::Vector{Float64}
     "Bus voltage phase angle; entered in degrees."
     va::Vector{Float64}
     "Owner number. 1 through the maximum number of owners at the current size level."
-    owner::Vector{Int}
-end
-
-function Buses(nrows)
-    return Buses(
-        Vector{Int}(undef, nrows),
-        Vector{String}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-    )
+    owner::Vector{Int16}
 end
 
 """
@@ -129,16 +117,16 @@ $TYPEDFIELDS
 """
 struct Loads <: Records
     "Buses number, or extended buses name enclosed in single quotes."
-    i::Vector{Int}
+    i::Vector{Int32}
     """
     One- or two-character uppercase non blank alphanumeric load identifier used to distinguish among multiple loads at bus "I".
     It is recommended that, at buses for which a single load is present, the load be designated as having the load identifier '1'.
     """
-    id::Vector{String}
+    id::Vector{InlineString3}
     "Initial load status of one for in-service and zero for out-of-service."
-    status::Vector{Float64}
+    status::Vector{Bool}
     "Area to which the load is assigned (1 through the maximum number of areas at the current size level)."
-    area::Vector{Int}
+    area::Vector{Int16}
     "Zone to which the load is assigned (1 through the maximum number of zones at the current size level)."
     zone::Vector{Float64}
     "Active power component of constant MVA load; entered in MW."
@@ -157,25 +145,9 @@ struct Loads <: Records
     """
     yq::Vector{Float64}
     "Owner to which the load is assigned (1 through the maximum number of owners at the current size level)."
-    owner::Vector{Int}
+    owner::Vector{Int16}
 end
 
-function Loads(nrows)
-    return Loads(
-        Vector{Int}(undef, nrows),
-        Vector{String}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-    )
-end
 
 """
     $TYPEDEF
@@ -189,13 +161,13 @@ $TYPEDFIELDS
 """
 struct Generators <: Records
     "Bus number, or extended bus name enclosed in single quotes."
-    i::Vector{Int}
+    i::Vector{Int32}
     """
     One- or two-character uppercase non blank alphanumeric machine identifier used to distinguish among multiple machines at bus "I".
     It is recommended that, at buses for which a single machine is present, the machine be designated as having the machine identifier ’1’.
     ID = ’1’ by default.
     """
-    id::Vector{String}
+    id::Vector{InlineString3}
     "Generator active power output; entered in MW. PG = 0.0 by default."
     pg::Vector{Float64}
     """
@@ -225,7 +197,7 @@ struct Generators <: Records
     IREG is entered as zero if the plant is to regulate its own voltage and must be zero for a type three (swing) bus.
     IREG = 0 by default.
     """
-    ireg::Vector{Int}
+    ireg::Vector{Int32}
     """
     Total MVA base of the units represented by this machine; entered in MVA.
     This quantity is not needed in normal power flow and equivalent construction work,
@@ -263,7 +235,7 @@ struct Generators <: Records
     Initial machine status of one for in-service and zero for out-of-service.
     STAT = 1 by default.
     """
-    stat::Vector{Int}
+    stat::Vector{Bool}
     """
     Percent of the total Mvar required to hold the voltage at the bus controlled by this bus "I" that are to be contributed by the generation at bus "I";
     RMPCT must be positive.
@@ -282,7 +254,7 @@ struct Generators <: Records
     Each machine may have up to four owners.
     By default, O1 is the owner to which bus "I" is assigned and O2, O3, and O4 are zero.
     """
-    oi::Vector{Int}
+    oi::Vector{Int16}
     """
     Fraction of total ownership assigned to owner Oi; each Fi must be positive.
     The Fi values are normalized such that they sum to 1.0 before they are placed in the working case.
@@ -291,30 +263,6 @@ struct Generators <: Records
     fi::Vector{Float64}
 end
 
-function Generators(nrows)
-    return Generators(
-        Vector{Int}(undef, nrows),
-        Vector{String}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-    )
-end
 
 """
     Network

@@ -1,9 +1,10 @@
 module PowerFlowData
 
+using DocStringExtensions
 using Parsers: Parsers, Options, xparse
 using Parsers: codes, eof, invalid, invaliddelimiter, newline, peekbyte
 using Tables
-using DocStringExtensions
+using WeakRefStrings: InlineString3, InlineString15
 
 export parse_network
 export Network
