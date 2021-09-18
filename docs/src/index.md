@@ -46,6 +46,7 @@ CaseID
 Buses
 Loads
 Generators
+Branches
 ```
 
 ## Alternatives
