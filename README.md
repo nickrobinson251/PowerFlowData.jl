@@ -16,7 +16,7 @@ parse_network("file.raw")
 ```
 This will return a `Network` object, which contains the data parsed into dedicated structures matching the PSS/E-format specification.
 
-**[Documentation](https://nickrobinson251.github.io/PowerFlowData.jl/)**
+**[Documentation](https://nickrobinson251.github.io/PowerFlowData.jl/dev)**
 
 ### Stability
 
