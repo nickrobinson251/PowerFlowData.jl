@@ -122,7 +122,7 @@ struct Loads <: Records
     One- or two-character uppercase non blank alphanumeric load identifier used to distinguish among multiple loads at bus "I".
     It is recommended that, at buses for which a single load is present, the load be designated as having the load identifier '1'.
     """
-    id::Vector{InlineString3}
+    id::Vector{InlineString3}  # TODO: confirm 3 is enough in practice, when whitespace can be present
     "Initial load status of one for in-service and zero for out-of-service."
     status::Vector{Bool}
     "Area to which the load is assigned (1 through the maximum number of areas at the current size level)."
@@ -167,7 +167,7 @@ struct Generators <: Records
     It is recommended that, at buses for which a single machine is present, the machine be designated as having the machine identifier ’1’.
     ID = ’1’ by default.
     """
-    id::Vector{InlineString3}
+    id::Vector{InlineString3}  # TODO: confirm 3 is enough in practice, when whitespace can be present
     "Generator active power output; entered in MW. PG = 0.0 by default."
     pg::Vector{Float64}
     """
