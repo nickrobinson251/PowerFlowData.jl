@@ -19,7 +19,7 @@ struct CaseID <: Tables.AbstractRow
     0 - base case (i.e., clear the working case before adding data to it).
     1 - add data to the working case.
     """
-    ic::Int8
+    ic::Int
     "System base MVA."
     sbase::Float64
 end
@@ -60,7 +60,7 @@ $TYPEDFIELDS
 """
 struct Buses <: Records
     "Bus number (1 to 999997)."
-    i::Vector{Int32}
+    i::Vector{Int}
     """
     Alphanumeric identifier assigned to bus "I".
     The name may be up to twelve characters and must be enclosed in single quotes.
@@ -78,7 +78,7 @@ struct Buses <: Records
     It has no power or reactive limits and regulates voltage at a fixed reference angle.
     4 - disconnected or isolated bus.
     """
-    ide::Vector{Int8}
+    ide::Vector{Int}
     """
     Active component of shunt admittance to ground; entered in MW at one per unit voltage.
     GL should not include any resistive admittance load, which is entered as part of load data.
@@ -93,15 +93,15 @@ struct Buses <: Records
     """
     bl::Vector{Float64}
     "Area number. 1 through the maximum number of areas at the current size level."
-    area::Vector{Int16}
+    area::Vector{Int}
     "Zone number. 1 through the maximum number of zones at the current size level."
-    zone::Vector{Int16}
+    zone::Vector{Int}
     "Bus voltage magnitude; entered in pu."
     vm::Vector{Float64}
     "Bus voltage phase angle; entered in degrees."
     va::Vector{Float64}
     "Owner number. 1 through the maximum number of owners at the current size level."
-    owner::Vector{Int16}
+    owner::Vector{Int}
 end
 
 """
@@ -117,7 +117,7 @@ $TYPEDFIELDS
 """
 struct Loads <: Records
     "Buses number, or extended buses name enclosed in single quotes."
-    i::Vector{Int32}
+    i::Vector{Int}
     """
     One- or two-character uppercase non blank alphanumeric load identifier used to distinguish among multiple loads at bus "I".
     It is recommended that, at buses for which a single load is present, the load be designated as having the load identifier '1'.
@@ -126,7 +126,7 @@ struct Loads <: Records
     "Initial load status of one for in-service and zero for out-of-service."
     status::Vector{Bool}
     "Area to which the load is assigned (1 through the maximum number of areas at the current size level)."
-    area::Vector{Int16}
+    area::Vector{Int}
     "Zone to which the load is assigned (1 through the maximum number of zones at the current size level)."
     zone::Vector{Float64}
     "Active power component of constant MVA load; entered in MW."
@@ -145,7 +145,7 @@ struct Loads <: Records
     """
     yq::Vector{Float64}
     "Owner to which the load is assigned (1 through the maximum number of owners at the current size level)."
-    owner::Vector{Int16}
+    owner::Vector{Int}
 end
 
 
@@ -161,7 +161,7 @@ $TYPEDFIELDS
 """
 struct Generators <: Records
     "Bus number, or extended bus name enclosed in single quotes."
-    i::Vector{Int32}
+    i::Vector{Int}
     """
     One- or two-character uppercase non blank alphanumeric machine identifier used to distinguish among multiple machines at bus "I".
     It is recommended that, at buses for which a single machine is present, the machine be designated as having the machine identifier ’1’.
@@ -197,7 +197,7 @@ struct Generators <: Records
     IREG is entered as zero if the plant is to regulate its own voltage and must be zero for a type three (swing) bus.
     IREG = 0 by default.
     """
-    ireg::Vector{Int32}
+    ireg::Vector{Int}
     """
     Total MVA base of the units represented by this machine; entered in MVA.
     This quantity is not needed in normal power flow and equivalent construction work,
@@ -254,7 +254,7 @@ struct Generators <: Records
     Each machine may have up to four owners.
     By default, O1 is the owner to which bus "I" is assigned and O2, O3, and O4 are zero.
     """
-    oi::Vector{Int16}
+    oi::Vector{Int}
     """
     Fraction of total ownership assigned to owner Oi; each Fi must be positive.
     The Fi values are normalized such that they sum to 1.0 before they are placed in the working case.
