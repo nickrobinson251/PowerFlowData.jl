@@ -146,7 +146,7 @@ function parse_row!(rec::Records, row::Int, bytes, pos, len, options, eol_option
     local code::Parsers.ReturnCode
     for col in 1:ncols
         eltyp = eltype(fieldtype(typeof(rec), col))
-        opts = col == ncols ? eol_options : options
+        opts = ifelse(col == ncols, eol_options, options)
         val, pos, code = parse_value(eltyp, bytes, pos, len, opts)
         @inbounds getfield(rec, col)[row] = val
 
