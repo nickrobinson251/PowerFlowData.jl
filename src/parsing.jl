@@ -2,6 +2,22 @@
 ### parsing
 ###
 
+const OPTIONS = Parsers.Options(
+    sentinel=missing,
+    quoted=true,
+    openquotechar='\'',
+    closequotechar='\'',
+    delim=',',
+)
+# Change delimiter as way to handle end-of-line comments.
+const EOL_OPTIONS = Parsers.Options(
+    sentinel=missing,
+    quoted=true,
+    openquotechar='\'',
+    closequotechar='\'',
+    delim='/',
+)
+
 getbytes(source::Vector{UInt8}) = source, 1, length(source)
 getbytes(source::IOBuffer) = source.data, source.ptr, source.size
 getbytes(source) = getbytes(read(source))
@@ -12,22 +28,9 @@ getbytes(source) = getbytes(read(source))
 Read a PSS/E-format `.raw` Power Flow Data file and return a [`Network`](@ref) object.
 """
 function parse_network(source)
-    options = Options(
-        sentinel=missing,
-        quoted=true,
-        openquotechar='\'',
-        closequotechar='\'',
-        delim=',',
-    )
-    eol_options =  Options(
-        sentinel=missing,
-        openquotechar='\'',
-        closequotechar='\'',
-        delim='/',  # change delimiter as way to handle end-of-line comments
-    )
     bytes, pos, len = getbytes(source)
 
-    caseid, pos = parse_caseid(bytes, pos, len, options)
+    caseid, pos = parse_caseid(bytes, pos, len, OPTIONS)
     @debug "caseid" pos
 
     # Skip the 2 lines of comments
@@ -36,17 +39,17 @@ function parse_network(source)
     pos = next_line(bytes, pos, len)
     @debug "comments" pos
 
-    nrows = count_nrow(bytes, pos, len, options)
+    nrows = count_nrow(bytes, pos, len, OPTIONS)
     @debug "buses" nrows pos
-    buses, pos = parse_records!(Buses(nrows), bytes, pos, len, options, eol_options)
+    buses, pos = parse_records!(Buses(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
 
-    nrows = count_nrow(bytes, pos, len, options)
+    nrows = count_nrow(bytes, pos, len, OPTIONS)
     @debug "loads" nrows pos
-    loads, pos = parse_records!(Loads(nrows), bytes, pos, len, options, eol_options)
+    loads, pos = parse_records!(Loads(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
 
-    nrows = count_nrow(bytes, pos, len, options)
+    nrows = count_nrow(bytes, pos, len, OPTIONS)
     @debug "gens" nrows pos
-    gens, pos = parse_records!(Generators(nrows), bytes, pos, len, options, eol_options)
+    gens, pos = parse_records!(Generators(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
 
     return Network(caseid, buses, loads, gens)
 end
