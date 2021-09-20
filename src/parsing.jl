@@ -126,17 +126,14 @@ function next_line(bytes, pos, len)
     b = peekbyte(bytes, pos)
     while b !== UInt8('\n') && b !== UInt8('\r')
         pos += 1
-        Parsers.incr!(bytes)  # TODO: not needed if not in Parsers.jl as got Vec{UInt8}?
         eof(bytes, pos, len) && break
         b = peekbyte(bytes, pos)
     end
     # Move forward to be past the `\r` or `\n` byte.
     pos += 1
-    Parsers.incr!(bytes)
     # if line ends `\r\n`, then we're at `\n`and need to move forward again.
     if b === UInt8('\r') && !eof(bytes, pos, len) && peekbyte(bytes, pos) === UInt8('\n')
         pos += 1
-        Parsers.incr!(bytes)
     end
     return pos
 end
