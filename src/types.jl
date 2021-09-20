@@ -33,6 +33,10 @@ Tables.getcolumn(cid::CaseID, nm::Symbol) = getfield(cid, nm)
 # So all tabular data records (buses, loads, ...) can be handled the same.
 abstract type Records end
 
+# Create a instance of a `Records` subtype, with all fields (assumed to be Vector)
+# containing `nrow` elements (initialised to undefined values, as they'll be overwritten).
+(::Type{R})(nrow) where {R <: Records} = R(map(T -> T(undef, nrow), fieldtypes(R))...)
+
 # Store data in column table so conversion to DataFrame efficient.
 Tables.istable(::Type{<:Records}) = true
 Tables.columnaccess(::Type{<:Records}) = true
@@ -62,7 +66,7 @@ struct Buses <: Records
     The name may be up to twelve characters and must be enclosed in single quotes.
     NAME may contain any combination of blanks, uppercase letters, numbers and special characters, but the first character must not be a minus sign.
     """
-    name::Vector{String}
+    name::Vector{InlineString15}
     "Bus base voltage; entered in kV."
     basekv::Vector{Float64}
     """
@@ -100,22 +104,6 @@ struct Buses <: Records
     owner::Vector{Int}
 end
 
-function Buses(nrows)
-    return Buses(
-        Vector{Int}(undef, nrows),
-        Vector{String}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-    )
-end
-
 """
     $TYPEDEF
 
@@ -134,9 +122,9 @@ struct Loads <: Records
     One- or two-character uppercase non blank alphanumeric load identifier used to distinguish among multiple loads at bus "I".
     It is recommended that, at buses for which a single load is present, the load be designated as having the load identifier '1'.
     """
-    id::Vector{String}
+    id::Vector{InlineString3}  # TODO: confirm 3 is enough in practice, when whitespace can be present
     "Initial load status of one for in-service and zero for out-of-service."
-    status::Vector{Float64}
+    status::Vector{Bool}
     "Area to which the load is assigned (1 through the maximum number of areas at the current size level)."
     area::Vector{Int}
     "Zone to which the load is assigned (1 through the maximum number of zones at the current size level)."
@@ -160,22 +148,6 @@ struct Loads <: Records
     owner::Vector{Int}
 end
 
-function Loads(nrows)
-    return Loads(
-        Vector{Int}(undef, nrows),
-        Vector{String}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-    )
-end
 
 """
     $TYPEDEF
@@ -195,7 +167,7 @@ struct Generators <: Records
     It is recommended that, at buses for which a single machine is present, the machine be designated as having the machine identifier ’1’.
     ID = ’1’ by default.
     """
-    id::Vector{String}
+    id::Vector{InlineString3}  # TODO: confirm 3 is enough in practice, when whitespace can be present
     "Generator active power output; entered in MW. PG = 0.0 by default."
     pg::Vector{Float64}
     """
@@ -263,7 +235,7 @@ struct Generators <: Records
     Initial machine status of one for in-service and zero for out-of-service.
     STAT = 1 by default.
     """
-    stat::Vector{Int}
+    stat::Vector{Bool}
     """
     Percent of the total Mvar required to hold the voltage at the bus controlled by this bus "I" that are to be contributed by the generation at bus "I";
     RMPCT must be positive.
@@ -291,30 +263,6 @@ struct Generators <: Records
     fi::Vector{Float64}
 end
 
-function Generators(nrows)
-    return Generators(
-        Vector{Int}(undef, nrows),
-        Vector{String}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-        Vector{Int}(undef, nrows),
-        Vector{Float64}(undef, nrows),
-    )
-end
 
 """
     Network

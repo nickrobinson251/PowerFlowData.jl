@@ -50,6 +50,9 @@ using Test
         @test buses.i == [111, 112, 113]
         @test buses.owner == [1, 2, 2]
 
+        # Test string column as expected
+        @test buses.name[2] == "D2JK  "
+
         loads = net1.loads
         @test loads.i == [111, 113]
         @test loads.owner == [1, 2]
@@ -57,6 +60,7 @@ using Test
         gens = net1.generators
         @test gens.i == [111, -112, 113]
         @test gens.fi == [1.0, 1.0, 1.0]
+        @test gens.id[1] == "ST"
     end
 
     @testset "v29 file" begin
@@ -71,12 +75,16 @@ using Test
         @test buses.i == [1, 222222]
         @test buses.owner == [1, 7]
 
+        # Test string column as expected
+        @test buses.name[2] == "PRPR C D    "
+
         loads = net2.loads
         @test loads.i == [1, 222222]
         @test loads.owner == [1, 7]
 
         gens = net2.generators
-        @test gens.i == [104]
-        @test gens.fi == [1.0]
+        @test gens.i == [104]    # first col
+        @test gens.fi == [1.0]   # last col
+        @test gens.id[1] == "1 " # string col
     end
 end

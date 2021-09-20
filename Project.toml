@@ -7,12 +7,14 @@ version = "1.0.0-DEV"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+WeakRefStrings = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 
 [compat]
 DataFrames = "1"
 DocStringExtensions = "0.8.5"
 Parsers = "2"
 Tables = "1"
+WeakRefStrings = "1"
 julia = "1"
 
 [extras]

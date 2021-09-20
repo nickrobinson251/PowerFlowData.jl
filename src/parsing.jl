@@ -14,6 +14,7 @@ Read a PSS/E-format `.raw` Power Flow Data file and return a [`Network`](@ref) o
 function parse_network(source)
     options = Options(
         sentinel=missing,
+        quoted=true,
         openquotechar='\'',
         closequotechar='\'',
         delim=',',
@@ -150,6 +151,7 @@ function parse_value(T, bytes, pos, len, options, eol=false)
         sentinel=missing,
         openquotechar='\'',
         closequotechar='\'',
+        quoted=true,
         delim='/',  # change delimiter as way to handle end-of-line comments
     )
     res = xparse(T, bytes, pos, len, opts)
@@ -159,14 +161,14 @@ function parse_value(T, bytes, pos, len, options, eol=false)
         # so if last column and hit invaliddelimiter, that is fine.
         # !!! warning: this won't work if last column is a StringType
         if !eol && !invaliddelimiter(res.code)
-            @warn codes(res.code) pos col
+            @warn codes(res.code) pos
         end
     end
 
     pos += res.tlen
     code = res.code
 
-    val = if T <: AbstractString
+    val = if T === String
         Parsers.getstring(bytes, res.val, opts.e)
     else
         res.val
