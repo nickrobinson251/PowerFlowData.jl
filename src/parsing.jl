@@ -79,7 +79,7 @@ function parse_caseid(bytes, pos, len, options)
     return CaseID(ic, sbase), pos
 end
 
-function parse_records!(rec::Records, bytes, pos, len, options, eol_options)
+function parse_records!(rec::R, bytes, pos, len, options, eol_options)::Tuple{R, Int} where {R <: Records}
     nrows = length(getfield(rec, 1))
     nrows == 0 && return rec, pos
     for row in 1:nrows
