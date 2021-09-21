@@ -2,6 +2,22 @@
 ### parsing
 ###
 
+const OPTIONS = Parsers.Options(
+    sentinel=missing,
+    quoted=true,
+    openquotechar='\'',
+    closequotechar='\'',
+    delim=',',
+)
+# Change delimiter as way to handle end-of-line comments.
+const EOL_OPTIONS = Parsers.Options(
+    sentinel=missing,
+    quoted=true,
+    openquotechar='\'',
+    closequotechar='\'',
+    delim='/',
+)
+
 getbytes(source::Vector{UInt8}) = source, 1, length(source)
 getbytes(source::IOBuffer) = source.data, source.ptr, source.size
 getbytes(source) = getbytes(read(source))
@@ -12,16 +28,9 @@ getbytes(source) = getbytes(read(source))
 Read a PSS/E-format `.raw` Power Flow Data file and return a [`Network`](@ref) object.
 """
 function parse_network(source)
-    options = Options(
-        sentinel=missing,
-        quoted=true,
-        openquotechar='\'',
-        closequotechar='\'',
-        delim=',',
-    )
     bytes, pos, len = getbytes(source)
 
-    caseid, pos = parse_caseid(bytes, pos, len, options)
+    caseid, pos = parse_caseid(bytes, pos, len, OPTIONS)
     @debug "caseid" pos
 
     # Skip the 2 lines of comments
@@ -30,17 +39,17 @@ function parse_network(source)
     pos = next_line(bytes, pos, len)
     @debug "comments" pos
 
-    nrows = count_nrow(bytes, pos, len, options)
+    nrows = count_nrow(bytes, pos, len, OPTIONS)
     @debug "buses" nrows pos
-    buses, pos = parse_records!(Buses(nrows), bytes, pos, len, options)
+    buses, pos = parse_records!(Buses(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
 
-    nrows = count_nrow(bytes, pos, len, options)
+    nrows = count_nrow(bytes, pos, len, OPTIONS)
     @debug "loads" nrows pos
-    loads, pos = parse_records!(Loads(nrows), bytes, pos, len, options)
+    loads, pos = parse_records!(Loads(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
 
-    nrows = count_nrow(bytes, pos, len, options)
+    nrows = count_nrow(bytes, pos, len, OPTIONS)
     @debug "gens" nrows pos
-    gens, pos = parse_records!(Generators(nrows), bytes, pos, len, options)
+    gens, pos = parse_records!(Generators(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
 
     return Network(caseid, buses, loads, gens)
 end
@@ -70,11 +79,11 @@ function parse_caseid(bytes, pos, len, options)
     return CaseID(ic, sbase), pos
 end
 
-function parse_records!(rec::Records, bytes, pos, len, options)
+function parse_records!(rec::R, bytes, pos, len, options, eol_options)::Tuple{R, Int} where {R <: Records}
     nrows = length(getfield(rec, 1))
     nrows == 0 && return rec, pos
     for row in 1:nrows
-        pos, code = parse_row!(rec, row, bytes, pos, len, options)
+        pos, code = parse_row!(rec, row, bytes, pos, len, options, eol_options)
 
         # Because we're working around end-of-line comments,
         # rows with comments won't have hit the newline character yet
@@ -117,28 +126,25 @@ function next_line(bytes, pos, len)
     b = peekbyte(bytes, pos)
     while b !== UInt8('\n') && b !== UInt8('\r')
         pos += 1
-        Parsers.incr!(bytes)  # TODO: not needed if not in Parsers.jl as got Vec{UInt8}?
         eof(bytes, pos, len) && break
         b = peekbyte(bytes, pos)
     end
     # Move forward to be past the `\r` or `\n` byte.
     pos += 1
-    Parsers.incr!(bytes)
     # if line ends `\r\n`, then we're at `\n`and need to move forward again.
     if b === UInt8('\r') && !eof(bytes, pos, len) && peekbyte(bytes, pos) === UInt8('\n')
         pos += 1
-        Parsers.incr!(bytes)
     end
     return pos
 end
 
-function parse_row!(rec::Records, row::Int, bytes, pos, len, options)
+function parse_row!(rec::Records, row::Int, bytes, pos, len, options, eol_options)
     ncols = nfields(rec)
     local code::Parsers.ReturnCode
     for col in 1:ncols
         eltyp = eltype(fieldtype(typeof(rec), col))
-        eol = col == ncols
-        val, pos, code = parse_value(eltyp, bytes, pos, len, options, eol)
+        opts = ifelse(col == ncols, eol_options, options)
+        val, pos, code = parse_value(eltyp, bytes, pos, len, opts)
         @inbounds getfield(rec, col)[row] = val
 
         @debug codes(code) row col pos newline=newline(code)
@@ -146,30 +152,16 @@ function parse_row!(rec::Records, row::Int, bytes, pos, len, options)
     return pos, code
 end
 
-function parse_value(T, bytes, pos, len, options, eol=false)
-    opts = !eol ? options : Options(
-        sentinel=missing,
-        openquotechar='\'',
-        closequotechar='\'',
-        quoted=true,
-        delim='/',  # change delimiter as way to handle end-of-line comments
-    )
-    res = xparse(T, bytes, pos, len, opts)
+function parse_value(T, bytes, pos, len, options)
+    res = xparse(T, bytes, pos, len, options)
 
-    if invalid(res.code)
-        # for the last column, there might be end-of-line comments;
-        # so if last column and hit invaliddelimiter, that is fine.
-        # !!! warning: this won't work if last column is a StringType
-        if !eol && !invaliddelimiter(res.code)
-            @warn codes(res.code) pos
-        end
-    end
+    invalid(res.code) && @warn codes(res.code) pos
 
     pos += res.tlen
     code = res.code
 
     val = if T === String
-        Parsers.getstring(bytes, res.val, opts.e)
+        Parsers.getstring(bytes, res.val, options.e)
     else
         res.val
     end
