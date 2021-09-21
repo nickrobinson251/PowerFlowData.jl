@@ -297,7 +297,7 @@ struct Branches <: Records
     It is recommended that single circuit branches be designated as having the circuit identifier '1'.
     CKT = '1' by default.
     """
-    CKT::Vector{String} # TODO: InlineString3?
+    CKT::Vector{InlineString3}
     "Branch resistance; entered in pu. A value of R must be entered for each branch."
     R::Vector{Float64}
     "Branch reactance; entered in pu. A nonzero value of X must be entered for each branch."
@@ -346,7 +346,7 @@ struct Branches <: Records
     Initial branch status where 1 designates in-service and 0 designates out-of-service.
     ST = 1 by default.
     """
-    ST::Vector{Int}
+    ST::Vector{Bool}
     "Line length; entered in user-selected units. LEN = 0.0 by default."
     LEN::Vector{Float64}
     """
