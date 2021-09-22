@@ -26,7 +26,7 @@ using Test
         @test df isa DataFrame
         @test size(df) == (3, 2)
 
-        for T in (Buses, Loads, Generators)
+        for T in (Buses, Loads, Generators, Branches)
             @test T <: PowerFlowData.Records
             @test Tables.istable(T)
         end
@@ -61,6 +61,12 @@ using Test
         @test gens.i == [111, -112, 113]
         @test gens.fi == [1.0, 1.0, 1.0]
         @test gens.id[1] == "ST"
+
+        branches = net1.branches
+        @test branches.i == [111, 111, 112]
+        @test branches.j == [112, -113, 113]  # negative numbers should be allowed
+        @test branches.fi == [1.0, 1.0, 1.0]
+        @test branches.ckt[1] == "3 "
     end
 
     @testset "v29 file" begin
@@ -86,5 +92,12 @@ using Test
         @test gens.i == [104]    # first col
         @test gens.fi == [1.0]   # last col
         @test gens.id[1] == "1 " # string col
+
+        branches = net2.branches
+        @test branches.i == [1, 2, 222222]
+        @test branches.j == [-543210, 9, 333333]  # negative numbers should be allowed
+        @test branches.fi == [1.0, 1.0, 1.0]
+        @test branches.ckt[2] == "6 "
+
     end
 end

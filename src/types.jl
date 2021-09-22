@@ -313,11 +313,11 @@ struct Branches <: Records
     - ``E_{base}`` is the base line-to-line voltage in volts of the buses to which the terminal of the branch is connected.
     - ``I_{rated}`` is the branch rated phase current in amperes.
     """
-    rate_a::Vector{Int}
+    rate_a::Vector{Float64}
     "Second loading rating; entered in MVA. RATEB = 0.0 by default."
-    rate_b::Vector{Int}
+    rate_b::Vector{Float64}
     "Third loading rating; entered in MVA. RATEC = 0.0 by default."
-    rate_c::Vector{Int}
+    rate_c::Vector{Float64}
     """
     Complex admittance of the line shunt at the bus "I" end of the branch; entered in pu.
     BI is negative for a line connected reactor and positive for line connected capacitor.
