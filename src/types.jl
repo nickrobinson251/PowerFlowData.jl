@@ -364,6 +364,71 @@ struct Branches <: Records
 end
 
 """
+    $TYPEDEF
+
+Each AC transformer to be represented in PSS/E is introduced through transformer data records
+that specify all the data required to model transformers in power flow calculations, with
+one exception.
+
+That exception is a set of ancillary data, comprising transformer impedance correction tables,
+which define the manner in which transformer impedance changes as off-nominal turns ratio or
+phase shift angle is adjusted. Those data records are described in Transformer Impedance
+Correction Tables.
+
+!!! note "Currently only two-winding transformers are supported."
+    In PSS/E files, both two-winding and three-winding transformers are specified in
+    transformer data records. The fields for the two-winding transformers are common to
+    the three-winding transformers; data for two-winding transformers is a subset of the
+    data required for three-winding transformers. _Currently all data in the transformer
+    records is assumed to be for two-winding transformers._
+
+# Fields
+$TYPEDFIELDS
+"""
+struct TwoWindingTransformers <: Records
+    # first row
+    i::Vector{Int}
+    j::Vector{Int}
+    k::Vector{Bool} # always zero
+    ckt::Vector{InlineString3}
+    cw::Vector{Int} # 1 or 2
+    cz::Vector{Int} # 1, 2 or 3
+    cm::Vector{Int} # 1 or 2
+    mag1::Vector{Float64}
+    mag2::Vector{Float64}
+    nmetr::Vector{Int} # 1 or 2
+    name::Vector{InlineString15}
+    stat::Vector{Bool}
+    oi::Vector{Int}
+    fi::Vector{Float64}
+    # second row
+    r1_2::Vector{Float64}
+    x1_2::Vector{Float64}
+    sbase1_2::Vector{Float64}
+    # third row
+    windv1::Vector{Float64}
+    nomv1::Vector{Float64}
+    ang1::Vector{Float64}
+    rata1::Vector{Float64}
+    ratb1::Vector{Float64}
+    ratc1::Vector{Float64}
+    cod1::Vector{Int}
+    cont1::Vector{Int}
+    rma1::Vector{Float64}
+    rmi1::Vector{Float64}
+    vma1::Vector{Float64}
+    vmi1::Vector{Float64}
+    ntp1::Vector{Int}
+    tab1::Vector{Int}
+    cr1::Vector{Float64}
+    cx1::Vector{Float64}
+    # fourth row
+    windv2::Vector{Float64}
+    nomv2::Vector{Float64}
+end
+
+
+"""
     Network
 
 Representation of a power network.
@@ -379,6 +444,7 @@ Currently supported are:
 1. [`Loads`](@ref)
 1. [`Generators`](@ref)
 1. [`Branches`](@ref)
+1. [`TwoWindingTransformers`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
@@ -406,6 +472,8 @@ struct Network
     generators::Generators
     "Non-transformer Branch records."
     branches::Branches
+    "Two-winding Transformer records."
+    two_winding_transformers::TwoWindingTransformers
 end
 
 ###

@@ -98,6 +98,18 @@ using Test
         @test branches.j == [112, -113, 113]  # negative numbers should be allowed
         @test branches.fi == [1.0, 1.0, 1.0]
         @test branches.ckt[1] == "3 "
+
+
+        transformers = net1.two_winding_transformers
+        @test transformers.i == [112]           #  1st entry of 1st row
+        @test transformers.j == [113]           # last entry of 1st row
+        @test transformers.r1_2 == [0.032470]   #  1st entry of 2nd row
+        @test transformers.sbase1_2 == [200.0]  # last entry of 2nd row
+        @test transformers.windv1 == [1.0]      #  1st entry of 3rd row
+        @test transformers.cx1 == [0.0]         # last entry of 3rd row
+        @test transformers.windv2 == [1.0]      #  1st entry of 4th row
+        @test transformers.nomv2 == [169.0]     # last entry of 4th row
+        @test transformers.ckt[1] == "G1"       # string col
     end
 
     @testset "v29 file" begin

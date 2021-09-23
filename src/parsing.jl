@@ -55,7 +55,12 @@ function parse_network(source)
     @debug "branches" nrows pos
     branches, pos = parse_records!(Branches(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
 
-    return Network(caseid, buses, loads, gens, branches)
+    nrows = count_nrow(bytes, pos, len, OPTIONS) ÷ 4
+    @debug "2-winding transformers" nrows pos
+    two_winding_transformers, pos = parse_records!(
+        TwoWindingTransformers(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS
+    )
+    return Network(caseid, buses, loads, gens, branches, two_winding_transformers)
 end
 
 function parse_caseid(bytes, pos, len, options)
@@ -88,12 +93,6 @@ function parse_records!(rec::R, bytes, pos, len, options, eol_options)::Tuple{R,
     nrows == 0 && return rec, pos
     for row in 1:nrows
         pos, code = parse_row!(rec, row, bytes, pos, len, options, eol_options)
-
-        # Because we're working around end-of-line comments,
-        # rows with comments won't have hit the newline character yet
-        if !newline(code)
-            pos = next_line(bytes, pos, len)
-        end
     end
 
     # Data input is terminated by specifying a bus number of zero.
@@ -152,6 +151,35 @@ function parse_row!(rec::Records, row::Int, bytes, pos, len, options, eol_option
         # in this call to parse_value (this will effect performance a lot!)
         val, pos, code = parse_value(eltyp, bytes, pos, len, opts)
         @inbounds getfield(rec, col)[row] = val
+
+        @debug codes(code) row col pos newline=newline(code)
+    end
+    # Because we're working around end-of-line comments,
+    # rows with comments won't have hit the newline character yet
+    if !newline(code)
+        pos = next_line(bytes, pos, len)
+    end
+    return pos, code
+end
+
+function parse_row!(rec::TwoWindingTransformers, row::Int, bytes, pos, len, options, eol_options)
+    # Each `TwoWindingTransformers` is 4 lines of the file
+    # cols_per_line = (14, 3, 16, 2)
+    eol_cols = (14, 17, 33, 35)
+    ncols = nfields(rec)
+    @assert ncols == last(eol_cols)
+    local code::Parsers.ReturnCode
+    for col in 1:ncols
+        eltyp = eltype(fieldtype(typeof(rec), col))
+        opts = ifelse(col in eol_cols, eol_options, options)
+        val, pos, code = parse_value(eltyp, bytes, pos, len, opts)
+        @inbounds getfield(rec, col)[row] = val
+
+        # Because we're working around end-of-line comments,
+        # rows with comments won't have hit the newline character yet
+        if col in eol_cols && !newline(code)
+            pos = next_line(bytes, pos, len)
+        end
 
         @debug codes(code) row col pos newline=newline(code)
     end
