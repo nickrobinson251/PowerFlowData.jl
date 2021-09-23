@@ -113,7 +113,7 @@ function count_nrow(buf, pos, len, options)
     while true
         res = xparse(String, buf, pos, len, options)
         pos += res.tlen
-        if newline(res.code)
+        if newline(res.code) || eof(res.code)
             nlines += 1
             if eof(buf, pos, len) || peekbyte(buf, pos) == UInt8('0')
                 break
