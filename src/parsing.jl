@@ -51,7 +51,11 @@ function parse_network(source)
     @debug "gens" nrows pos
     gens, pos = parse_records!(Generators(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
 
-    return Network(caseid, buses, loads, gens)
+    nrows = count_nrow(bytes, pos, len, OPTIONS)
+    @debug "branches" nrows pos
+    branches, pos = parse_records!(Branches(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
+
+    return Network(caseid, buses, loads, gens, branches)
 end
 
 function parse_caseid(bytes, pos, len, options)

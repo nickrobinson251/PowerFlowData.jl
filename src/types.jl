@@ -265,6 +265,105 @@ end
 
 
 """
+    $TYPEDEF
+
+In PSS/E, the basic transmission line model is an Equivalent Pi connected between network buses.
+
+Data for shunt equipment units, such as reactors, which are connected to and switched with the line,
+are entered in the same data record.
+
+!!! note "Shunts connected to buses"
+    To represent shunts connected to buses, that shunt data should be entered in the bus data record.
+
+!!! note "Transformers"
+    Branches to be modeled as transformers are not specified in this data category;
+    rather, they are specified in the transformer data category.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct Branches <: Records
+    "Branch \"from bus\" number, or extended bus name enclosed in single quotes."
+    i::Vector{Int}
+    """
+    Branch "to bus" number, or extended bus name enclosed in single quotes.
+    "J" is entered as a negative number, or with a minus sign before the first character of the extended bus name,
+    to designate it as the metered end; otherwise, bus "I" is assumed to be the metered end.
+    """
+    j::Vector{Int}
+    """
+    One- or two-character uppercase nonblank alphanumeric branch circuit identifier;
+    the first character of CKT must not be an ampersand "&".
+    It is recommended that single circuit branches be designated as having the circuit identifier '1'.
+    CKT = '1' by default.
+    """
+    ckt::Vector{InlineString3}
+    "Branch resistance; entered in pu. A value of R must be entered for each branch."
+    r::Vector{Float64}
+    "Branch reactance; entered in pu. A nonzero value of X must be entered for each branch."
+    x::Vector{Float64}
+    "Total branch charging susceptance; entered in pu. B = 0.0 by default."
+    b::Vector{Float64}
+    """
+    First loading rating; entered in MVA.
+    If RATEA is set to 0.0, the default value, this branch will not be included in any examination of circuit loading.
+
+    Ratings are entered as:
+    ``MVA_{rated} = sqrt(3) × E_{base} × I_{rated} × 10^{-6}`` where:
+    - ``E_{base}`` is the base line-to-line voltage in volts of the buses to which the terminal of the branch is connected.
+    - ``I_{rated}`` is the branch rated phase current in amperes.
+    """
+    rate_a::Vector{Float64}
+    "Second loading rating; entered in MVA. RATEB = 0.0 by default."
+    rate_b::Vector{Float64}
+    "Third loading rating; entered in MVA. RATEC = 0.0 by default."
+    rate_c::Vector{Float64}
+    """
+    Complex admittance of the line shunt at the bus "I" end of the branch; entered in pu.
+    BI is negative for a line connected reactor and positive for line connected capacitor.
+    GI + jBI = 0.0 by default.
+    """
+    gi::Vector{Float64}
+    """
+    Complex admittance of the line shunt at the bus "I" end of the branch; entered in pu.
+    BI is negative for a line connected reactor and positive for line connected capacitor.
+    GI + jBI = 0.0 by default.
+    """
+    bi::Vector{Float64}
+    """
+    Complex admittance of the line shunt at the bus "J" end of the branch; entered in pu.
+    BJ is negative for a line connected reactor and positive for line connected capacitor.
+    GJ + jBJ = 0.0 by default.
+    """
+    gj::Vector{Float64}
+    """
+    Complex admittance of the line shunt at the bus "J" end of the branch; entered in pu.
+    BJ is negative for a line connected reactor and positive for line connected capacitor.
+    GJ + jBJ = 0.0 by default.
+    """
+    bj::Vector{Float64}
+    """
+    Initial branch status where 1 designates in-service and 0 designates out-of-service.
+    ST = 1 by default.
+    """
+    st::Vector{Bool}
+    "Line length; entered in user-selected units. LEN = 0.0 by default."
+    len::Vector{Float64}
+    """
+    Owner number; 1 through the maximum number of owners at the current size level.
+    Each branch may have up to four owners.
+    By default, O1 is the owner to which bus "I" is assigned and O2, O3, and O4 are zero.
+    """
+    oi::Vector{Int}
+    """
+    Fraction of total ownership assigned to owner Oi; each Fi must be positive.
+    The Fi values are normalized such that they sum to 1.0 before they are placed in the working case.
+    By default, each Fi is 1.0.
+    """
+    fi::Vector{Float64}
+end
+
+"""
     Network
 
 Representation of a power network.
@@ -279,6 +378,7 @@ Currently supported are:
 1. [`Buses`](@ref)
 1. [`Loads`](@ref)
 1. [`Generators`](@ref)
+1. [`Branches`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
@@ -304,4 +404,6 @@ struct Network
     loads::Loads
     "Generator records."
     generators::Generators
+    "Non-transformer Branch records."
+    branches::Branches
 end
