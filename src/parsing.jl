@@ -9,14 +9,6 @@ const OPTIONS = Parsers.Options(
     closequotechar='\'',
     delim=',',
 )
-# Change delimiter as way to handle end-of-line comments.
-const EOL_OPTIONS = Parsers.Options(
-    sentinel=missing,
-    quoted=true,
-    openquotechar='\'',
-    closequotechar='\'',
-    delim='/',
-)
 
 getbytes(source::Vector{UInt8}) = source, 1, length(source)
 getbytes(source::IOBuffer) = source.data, source.ptr, source.size
@@ -41,19 +33,19 @@ function parse_network(source)
 
     nrows = count_nrow(bytes, pos, len, OPTIONS)
     @debug "buses" nrows pos
-    buses, pos = parse_records!(Buses(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
+    buses, pos = parse_records!(Buses(nrows), bytes, pos, len, OPTIONS)
 
     nrows = count_nrow(bytes, pos, len, OPTIONS)
     @debug "loads" nrows pos
-    loads, pos = parse_records!(Loads(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
+    loads, pos = parse_records!(Loads(nrows), bytes, pos, len, OPTIONS)
 
     nrows = count_nrow(bytes, pos, len, OPTIONS)
     @debug "gens" nrows pos
-    gens, pos = parse_records!(Generators(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
+    gens, pos = parse_records!(Generators(nrows), bytes, pos, len, OPTIONS)
 
     nrows = count_nrow(bytes, pos, len, OPTIONS)
     @debug "branches" nrows pos
-    branches, pos = parse_records!(Branches(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
+    branches, pos = parse_records!(Branches(nrows), bytes, pos, len, OPTIONS)
 
     # 2-winding Transformers data is 4 lines each... so this will be correct when all
     # transformers as 2-winding, and become incorrect once there are multiple 3-winding.
@@ -61,9 +53,7 @@ function parse_network(source)
     # https://github.com/nickrobinson251/PowerFlowData.jl/issues/5
     nrows = count_nrow(bytes, pos, len, OPTIONS) ÷ 4
     @debug "2-winding transformers" nrows pos
-    transformers, pos = parse_records!(
-        Transformers(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS
-    )
+    transformers, pos = parse_records!(Transformers(nrows), bytes, pos, len, OPTIONS)
     return Network(caseid, buses, loads, gens, branches, transformers)
 end
 
@@ -92,11 +82,11 @@ function parse_caseid(bytes, pos, len, options)
     return CaseID(ic, sbase), pos
 end
 
-function parse_records!(rec::R, bytes, pos, len, options, eol_options)::Tuple{R, Int} where {R <: Records}
+function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {R <: Records}
     nrows = length(getfield(rec, 1))
     nrows == 0 && return rec, pos
     for row in 1:nrows
-        pos, code = parse_row!(rec, row, bytes, pos, len, options, eol_options)
+        pos, code = parse_row!(rec, row, bytes, pos, len, options)
     end
 
     # Data input is terminated by specifying a bus number of zero.
@@ -148,15 +138,14 @@ function next_line(bytes, pos, len)
     return pos
 end
 
-function parse_row!(rec::Records, row::Int, bytes, pos, len, options, eol_options)
-    ncols = nfields(rec)
+function parse_row!(rec::Records, row::Int, bytes, pos, len, options)
+    ncols = fieldcount(rec)
     local code::Parsers.ReturnCode
     for col in 1:ncols
         eltyp = eltype(fieldtype(typeof(rec), col))
-        opts = ifelse(col == ncols, eol_options, options)
         # TODO: come up with a way to avoid type instability/dynamic dispatch
         # in this call to parse_value (this will effect performance a lot!)
-        val, pos, code = parse_value(eltyp, bytes, pos, len, opts)
+        val, pos, code = parse_value(eltyp, bytes, pos, len, options)
         @inbounds getfield(rec, col)[row] = val
 
         @debug codes(code) row col pos newline=newline(code)
@@ -177,7 +166,7 @@ end
 # To hold "three-winding" data we need `sum((14, 11, 16, 16, 16)) == 73` columns, and
 # column 14+3=17 and column 14+11+16+2=43 are "special" in that they may or may not be at
 # the end of a line.
-function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options, eol_options)
+function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options)
     ncols = fieldcount(Transformers)
     @assert ncols == last(EOL_COLS)
 
@@ -186,8 +175,7 @@ function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options, eol_o
     is_t2 = false
     while col ≤ ncols
         eltyp = nonmissingtype(eltype(fieldtype(typeof(rec), col)))
-        opts = ifelse(col in EOL_COLS, eol_options, options)
-        val, pos, code = parse_value(eltyp, bytes, pos, len, opts)
+        val, pos, code = parse_value(eltyp, bytes, pos, len, options)
         @inbounds getfield(rec, col)[row] = val
 
         @debug codes(code) row col pos newline=newline(code)
