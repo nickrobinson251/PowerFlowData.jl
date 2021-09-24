@@ -141,5 +141,15 @@ using Test
         @test branches.fi == [1.0, 1.0, 1.0]
         @test branches.ckt[2] == "6 "
 
+        transformers = net2.two_winding_transformers
+        @test transformers.i == [42, 4774]             #  1st entry of 1st row
+        @test transformers.fi == [1.0, 1.0]            # last entry of 1st row
+        @test transformers.r1_2 == [0.0025, 0.0]       #  1st entry of 2nd row
+        @test transformers.sbase1_2 == [100.0, 100.0]  # last entry of 2nd row
+        @test transformers.windv1 == [1.0, 1.0462]     #  1st entry of 3rd row
+        @test transformers.cx1 == [0.0, 0.0]           # last entry of 3rd row
+        @test transformers.windv2 == [1.0, 1.045]      #  1st entry of 4th row
+        @test transformers.nomv2 == [138.0, 240.35]    # last entry of 4th row
+        @test transformers.ckt == ["K1", "90"]         # string col
     end
 end
