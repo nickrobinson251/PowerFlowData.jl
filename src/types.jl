@@ -387,43 +387,245 @@ $TYPEDFIELDS
 """
 struct TwoWindingTransformers <: Records
     # first row
+    """
+    The bus number, or extended bus name enclosed in single quotes, of the bus to which the
+    first winding is connected. The transformer’s magnetizing admittance is modeled on winding one.
+    The first winding is the only winding of a two-winding transformer whose tap ratio or
+    phase shift angle may be adjusted by the power flow solution activities;
+    any winding(s) of a three-winding transformer may be adjusted. No default is allowed.
+    """
     i::Vector{Int}
+    """
+    The bus number, or extended bus name enclosed in single quotes, of the bus to which the
+    second winding is connected. This winding may have a fixed, off-nominal tap ratio
+    assigned to it. No default is allowed.
+    """
     j::Vector{Int}
+    """
+    The bus number, or extended bus name enclosed in single quotes, of the bus to which the
+    third winding is connected. Zero is used to indicate that no third winding is present.
+    _Always equal to zero for a two-winding transformer._
+    """
     k::Vector{Bool} # always zero
+    """
+    One- or two-character uppercase nonblank alphanumeric transformer circuit identifier;
+    the first character of `ckt` must not be an ampersand ('&').
+    """
     ckt::Vector{InlineString3}
+    """
+    The winding data I/O code which defines the units in which the turns ratios `windv1` and
+    `windv2` are specified (the units of `rma1` and `rmi1` are also governed by `cw` when
+    `|cod1|` is 1 or 2):
+    * 1 for off-nominal turns ratio in pu of winding bus base voltage;
+    * 2 for winding voltage in kV.
+    `cw` = 1 by default.
+    """
     cw::Vector{Int} # 1 or 2
+    """
+    The impedance data I/O code that defines the units in which the winding impedances
+    `r1_2` and `x1_2` are specified:
+    * 1 for resistance and reactance in pu on system base quantities;
+    * 2 for resistance and reactance in pu on a specified base MVA and winding bus base voltage;
+    * 3 for transformer load loss in watts and impedance magnitude in pu on a specified base MVA
+      and winding bus base voltage.
+    `cz` = 1 by default.
+    """
     cz::Vector{Int} # 1, 2 or 3
+    """
+    The magnetizing admittance I/O code that defines the units in which `mag1` and `mag2` are specified:
+    * 1 for complex admittance in pu on system base quantities;
+    * 2 for no load loss in watts and exciting current in pu on winding one to two base MVA
+      and nominal voltage.
+    `cm` = 1 by default.
+    """
     cm::Vector{Int} # 1 or 2
+    """
+    When `cm` is 1, `mag1` is the magnetizing conductance in pu on system base quantities;
+    when `cm` is 2, `mag1` is the no load loss in watts.
+    `mag1` = 0.0 by default.
+    """
     mag1::Vector{Float64}
+    """
+    When `cm` is 1, `mag2` is the magnetizing susceptance in pu on system base quantities;
+    when `cm` is 2, `mag2` is the exciting current in pu on winding one to two base MVA (`sbase1_2`)
+    and nominal voltage (`nomv1`).
+    `mag2` = 0.0 by default.
+    """
     mag2::Vector{Float64}
+    """
+    The nonmetered end code of either:
+    * 1 (for the winding one bus), or
+    * 2 (for the winding two bus).
+    `nmetr` = 2 by default.
+    """
     nmetr::Vector{Int} # 1 or 2
+    """
+    An alphanumeric identifier assigned to the transformer. The name may be up to twelve characters.
+    `name` may contain any combination of blanks, uppercase letters, numbers and special characters.
+    `name` is twelve blanks by default.
+    """
     name::Vector{InlineString15}
+    """
+    The initial transformer status, where 1 designates in-service and 0 designates out-of-service.
+    `stat` = 1 by default.
+    """
     stat::Vector{Bool}
+    """
+    An owner number; (1 through the maximum number of owners at the current size level).
+    Each transformer may have up to four owners. By default, O1 is the owner to which bus "I" is assigned
+    """
     oi::Vector{Int}
+    """
+    The fraction of total ownership assigned to owner `Oi`; each Fi must be positive.
+    The Fi values are normalized such that they sum to 1.0 before they are placed in the working case.
+    By default, each `fi` is 1.0.
+    """
     fi::Vector{Float64}
     # second row
+    """
+    The measured impedance of the transformer between the buses to which its first and second
+    windings are connected (see also `x1_2`).
+    * When `cz` is 1, `r1_2` is the resistance in pu on system base quantities;
+    * when `cz` is 2, `r1_2` is the resistance in pu on winding one to two base MVA (`sbase1_2`) and winding one bus base voltage;
+    * when `cz` is 3, `r1_2` is the load loss in watts.
+    `r1_2` = 0.0  by default.
+    """
     r1_2::Vector{Float64}
+    """
+    The measured impedance of the transformer between the buses to which its first and second
+    windings are connected (see also `r1_2`).
+    * When `cz` is 1, `x1_2` is the reactance in pu on system base quantities;
+    * when `cz` is 2, `x1_2` is the reactance in pu on winding one to two base MVA (`sbase1_2`) and winding one bus base voltage;
+    * when `cz` is 3, `x1_2` is the impedance magnitude in pu on winding one to two base MVA (`sbase1_2`) and winding one bus base voltage.
+    `x1_2` has no default.
+    """
     x1_2::Vector{Float64}
+    """
+    The winding one to two base MVA of the transformer.
+    `sbase1_2` = `sbase` (the system base MVA) by default.
+    """
     sbase1_2::Vector{Float64}
     # third row
+    """
+    When `cw` is 1, `windv1` is the winding one off-nominal turns ratio in pu of winding one bus base voltage,
+    and windv1 = 1.0 by default.
+    When `cw` is 2, `windv1` is the actual winding one voltage in kV,
+    and `windv1` is equal to the base voltage of bus "I" by default.
+    """
     windv1::Vector{Float64}
+    """
+    The nominal (rated) winding one voltage in kV, or zero to indicate that nominal winding
+    one voltage is to be taken as the base voltage of bus "I".
+    `nomv1` is used only in converting magnetizing data between per unit admittance values
+    and physical units when `cm` is 2.
+    `nomv1` = 0.0 by default.
+    """
     nomv1::Vector{Float64}
+    """
+    The winding one phase shift angle in degrees.
+    `ang1` is positive for a positive phase shift from the winding one side to the winding two side (for a two-winding transformer).
+    `ang1` must be greater than -180.0 and less than or equal to +180.0.
+    `ang1` = 0.0 by default.
+    """
     ang1::Vector{Float64}
+    """
+    The first winding’s first rating entered in MVA (not current expressed in MVA).
+    """
     rata1::Vector{Float64}
+    """
+    The first winding’s second rating entered in MVA (not current expressed in MVA).
+    """
     ratb1::Vector{Float64}
+    """
+    The first winding’s third rating entered in MVA (not current expressed in MVA).
+    """
     ratc1::Vector{Float64}
+    """
+    The transformer control mode for automatic adjustments of the winding one tap or
+    phase shift angle during power flow solutions:
+    * 0 for no control (fixed tap and phase shift);
+    * ±1 for voltage control;
+    * ±2 for reactive power flow control;
+    * ±3 for active power flow control;
+    * ±4 for control of a DC line quantity.
+    If the control mode is entered as a positive number, automatic adjustment of this transformer
+    winding is enabled when the corresponding adjustment is activated during power flow solutions;
+    a negative control mode suppresses the automatic adjustment of this transformer winding.
+    `cod1` = 0 by default.
+    """
     cod1::Vector{Int}
+    """
+    The bus number, or extended bus name enclosed in single quotes, of the bus whose voltage
+    is to be controlled by the transformer turns ratio adjustment option of the power flow
+    solution activities when `cod1` is 1.
+
+    `cont1` should be non-zero only for voltage controlling transformer windings.
+    `cont1` may specify a bus other than "I", "J", or "K"; in this case, the sign of `cont1`
+    defines the location of the controlled bus relative to the transformer winding.
+
+    If `cont1` is entered as a positive number, the ratio is adjusted as if bus `cont1` is on the winding two side of the transformer;
+    if `cont1` is entered as a negative number, the ratio is adjusted as if bus `|cont1|` is on the winding one side of the transformer.
+    `cont1` = 0 by default.
+    """
     cont1::Vector{Int}
+    """
+    `rma1` is the upper limit (and `rmi1` the lower limit) of either:
+    * Off-nominal turns ratio in pu of winding one bus base voltage when `|cod1|` is 1 or 2 and `cw` is 1;
+      `rma1` = 1.1 and `rmi1` = 0.9 by default.
+    * Actual winding one voltage in kV when `|cod1|` is 1 or 2 and `cw` is 2. No default is allowed.
+    * Phase shift angl e in degrees when |COD1| is 3. No default is allowed.
+    * Not used when `|cod1|` is 0 or 4;
+    `rma1` = 1.1 and `rmi1` = 0.9 by default.
+    """
     rma1::Vector{Float64}
+    "The lower limit to `rma1`'s upper limit. See `rma1` for details."
     rmi1::Vector{Float64}
+    """
+    `vma1` is the upper limit (and `vmi1` the lower limit) of either:
+    * Voltage at the controlled bus (bus `|cont1|`) in pu when `|cod1|` is 1. `vma1` = 1.1 and `vmi1` = 0.9 by default.
+    * Reactive power flow into the transformer at the winding one bus end in Mvar when `|cod1|` is 2. no default is allowed.
+    * Active power flow into the transformer at the winding one bus end in MW when `|cod1|` is 3. no default is allowed.
+    * Not used when `|cod1|` is 0 or 4; `vma1` = 1.1 and `vmi1` = 0.9 by default.
+    """
     vma1::Vector{Float64}
+    "The lower limit to `vma1`'s upper limit. See `vma1` for details."
     vmi1::Vector{Float64}
+    """
+    The number of tap positions available; used when `cod1` is 1 or 2.
+    `ntp1` must be between 2 and 9999.
+    `ntp1` = 33 by default.
+    """
     ntp1::Vector{Int}
+    """
+    The number of a transformer impedance correction table if this transformer winding’s
+    impedance is to be a function of either off-nominal turns ratio or phase shift angle,
+    or 0 if no transformer impedance correction is to be applied to this transformer winding.
+    `tab1` = 0 by default.
+    """
     tab1::Vector{Int}
+    """
+    The load drop compensation impedance for voltage controlling transformers entered in pu
+    on system base quantities; used when `cod1` is 1.
+    `cr1` + j`cx1` = 0.0 by default.
+    """
     cr1::Vector{Float64}
+    "See `cr1` for details."
     cx1::Vector{Float64}
     # fourth row
+    """
+    When `cw` is 1, `windv2` is the winding two off-nominal turns ratio in pu of winding two bus base voltage,
+    and `windv2` = 1.0 by default.
+    When `cw` is 2, `windv2` is the actual winding two voltage in kV,
+    and `windv2` is equal to the base voltage of bus "J" by default.
+    """
     windv2::Vector{Float64}
+    """
+    The nominal (rated) winding two voltage in kV, or zero to indicate that nominal winding
+    two voltage is to be taken as the base voltage of bus "J".
+    `nomv2` is present for information purposes only; it is not used in any of the calculations
+    for modeling the transformer.
+    `nomv2` = 0.0 by default.
+    """
     nomv2::Vector{Float64}
 end
 
