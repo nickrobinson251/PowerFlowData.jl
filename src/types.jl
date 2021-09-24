@@ -42,8 +42,8 @@ Tables.istable(::Type{<:Records}) = true
 Tables.columnaccess(::Type{<:Records}) = true
 Tables.columns(x::Records) = x
 Tables.getcolumn(x::Records, i::Int) = getfield(x, i)
-Tables.columnnames(x::R) where {R <: Records} = fieldnames(R)
-Tables.schema(x::R) where {R <: Records} = Tables.Schema(fieldnames(R), fieldtypes(R))
+Tables.columnnames(R::Type{<:Records}) = fieldnames(R)
+Tables.schema(R::Type{<:Records}) = Tables.Schema(fieldnames(R), fieldtypes(R))
 
 """
     $TYPEDEF
