@@ -148,6 +148,8 @@ function parse_row!(rec::Records, row::Int, bytes, pos, len, options, eol_option
     for col in 1:ncols
         eltyp = eltype(fieldtype(typeof(rec), col))
         opts = ifelse(col == ncols, eol_options, options)
+        # TODO: come up with a way to avoid type instability/dynamic dispatch
+        # in this call to parse_value (this will effect performance a lot!)
         val, pos, code = parse_value(eltyp, bytes, pos, len, opts)
         @inbounds getfield(rec, col)[row] = val
 
