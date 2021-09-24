@@ -99,10 +99,9 @@ using Test
         @test branches.fi == [1.0, 1.0, 1.0]
         @test branches.ckt[1] == "3 "
 
-
         transformers = net1.two_winding_transformers
         @test transformers.i == [112]           #  1st entry of 1st row
-        @test transformers.j == [113]           # last entry of 1st row
+        @test transformers.fi == [1.0]          # last entry of 1st row
         @test transformers.r1_2 == [0.032470]   #  1st entry of 2nd row
         @test transformers.sbase1_2 == [200.0]  # last entry of 2nd row
         @test transformers.windv1 == [1.0]      #  1st entry of 3rd row
