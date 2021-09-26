@@ -37,6 +37,37 @@ using Test
         @test NamedTuple(caseid) == (ic=0, sbase=100.0)
     end
 
+    @testset "show" begin
+        net = parse_network("testfiles/synthetic_data_v30.raw")
+
+        # CaseID should have a parseable `repr`; `AbstractRows` don't get this for free.
+        @test repr(net.caseid) == "CaseID(ic = 0, sbase = 100.0)"
+        @test eval(Meta.parse(repr(net.caseid))) == CaseID(0, 100.0)
+
+        mime = MIME("text/plain")
+        context = :compact => true
+        @test repr(mime, net) == strip(
+            """
+            Network with 5 data categories:
+             $(sprint(show, mime, net.caseid))
+             $(sprint(show, mime, net.buses; context))
+             $(sprint(show, mime, net.loads; context))
+             $(sprint(show, mime, net.generators; context))
+             $(sprint(show, mime, net.branches; context))
+            """
+        )
+        @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
+
+        @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 3 records"
+        @test repr(mime, net.buses) == strip("""
+            Buses with 3 records:
+             i : [111, 112, 113]
+            $(sprint(show, mime, Tables.schema(Buses); context=(:limit => true)))
+            """
+        )
+        @test contains(repr(mime, net.branches), "i => j")  # custom branches "identifier"
+    end
+
     @testset "v30 file" begin
         net1 = parse_network("testfiles/synthetic_data_v30.raw")
         @test net1 isa Network
