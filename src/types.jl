@@ -433,7 +433,8 @@ function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
         # show identifiers, e.g. bus numbers, but limit them as there could be very many.
         _print_identifiers(IOContext(io, :limit => true), x)
         print(io, "\n")
-        show(io, mime, Tables.schema(R))
+        # Always show all columns, as it's helpful and there are never 100s.
+        show(IOContext(io, :limit => false), mime, Tables.schema(R))
     end
 end
 
