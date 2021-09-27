@@ -55,7 +55,7 @@ function parse_network(source)
     @debug "branches" nrows pos
     branches, pos = parse_records!(Branches(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
 
-    nrows = count_nrow(bytes, pos, len, OPTIONS) ÷ 4
+    nrows = count_nrow(bytes, pos, len, OPTIONS) ÷ 4  # Two-winding Transformers data is 4 lines each
     @debug "2-winding transformers" nrows pos
     two_winding_transformers, pos = parse_records!(
         TwoWindingTransformers(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS
