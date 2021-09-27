@@ -35,7 +35,7 @@ abstract type Records end
 
 # Create a instance of a `Records` subtype, with all fields (assumed to be Vector)
 # containing `nrow` elements (initialised to undefined values, as they'll be overwritten).
-(::Type{R})(nrow) where {R <: Records} = R(map(T -> T(undef, nrow), fieldtypes(R))...)
+(::Type{R})(nrow) where {R <: Records} = R(map(T -> T(undef, (nrow,)), fieldtypes(R))...)
 
 # Store data in column table so conversion to DataFrame efficient.
 Tables.istable(::Type{<:Records}) = true
@@ -43,7 +43,7 @@ Tables.columnaccess(::Type{<:Records}) = true
 Tables.columns(x::Records) = x
 Tables.getcolumn(x::Records, i::Int) = getfield(x, i)
 Tables.columnnames(R::Type{<:Records}) = fieldnames(R)
-Tables.schema(R::Type{<:Records}) = Tables.Schema(fieldnames(R), fieldtypes(R))
+Tables.schema(x::R) where {R <: Records} = Tables.Schema(fieldnames(R), fieldtypes(R))
 
 """
     $TYPEDEF
@@ -385,7 +385,7 @@ Correction Tables.
 # Fields
 $TYPEDFIELDS
 """
-struct TwoWindingTransformers <: Records
+struct Transformers <: Records
     # first row
     """
     The bus number, or extended bus name enclosed in single quotes, of the bus to which the
@@ -505,6 +505,15 @@ struct TwoWindingTransformers <: Records
     `sbase1_2` = `sbase` (the system base MVA) by default.
     """
     sbase1_2::Vector{Float64}
+    # second row, but 3-winding transformers only
+    r2_3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    x2_3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    sbase2_3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    r3_1::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    x3_1::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    sbase3_1::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    vmstar::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    anstar::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
     # third row
     """
     When `cw` is 1, `windv1` is the winding one off-nominal turns ratio in pu of winding one bus base voltage,
@@ -627,8 +636,59 @@ struct TwoWindingTransformers <: Records
     `nomv2` = 0.0 by default.
     """
     nomv2::Vector{Float64}
+    # fourth row, but 3-winding transformers only
+    ang2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    rata2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    ratb2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    ratc2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    cod2::SentinelVector{Int, Int, Missing, Vector{Int}} # one of: -3, -2, -1, 0, 1, 2, 3
+    cont2::SentinelVector{Int, Int, Missing, Vector{Int}}
+    rma2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    rmi2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    vma2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    vmi2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    ntp2::SentinelVector{Int, Int, Missing, Vector{Int}}
+    tab2::SentinelVector{Int, Int, Missing, Vector{Int}}
+    cr2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    cx2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    # fifth row, only 3-winding transformers
+    windv3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    nomv3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    ang3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    rata3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    ratb3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    ratc3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    cod3::SentinelVector{Int, Int, Missing, Vector{Int}}
+    cont3::SentinelVector{Int, Int, Missing, Vector{Int}}
+    rma3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    rmi3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    vma3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    vmi3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    ntp3::SentinelVector{Int, Int, Missing, Vector{Int}}
+    tab3::SentinelVector{Int, Int, Missing, Vector{Int}}
+    cr3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    cx3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
 end
 
+# Since 2-winding data is a subset of 3-winding data, check at runtime if we have any
+# 3-winding data and if not just return the subset of columns required for 2-winding data.
+function Tables.schema(x::R) where {R <: Transformers}
+    return if all(ismissing, x.cx3)
+        cols = [
+            1:T2_COLS[1];
+            (EOL_COLS[1] + 1):(EOL_COLS[1] + T2_COLS[2]);
+            (EOL_COLS[2] + 1):(EOL_COLS[2] + T2_COLS[3]);
+            (EOL_COLS[3] + 1):(EOL_COLS[3] + T2_COLS[4]);
+        ]
+        Tables.Schema(fieldname.(R, cols), fieldtype.(R, cols))
+    else
+        Tables.Schema(fieldnames(R), fieldtypes(R))
+    end
+end
+
+# `DataFrame` just calls `columns`, so we need that to return something that respects the
+# schema (which for `Transformers` data depends on the values).
+Tables.columns(x::Transformers) = Tables.columntable(Tables.schema(x), x)
 
 """
     Network
@@ -646,7 +706,7 @@ Currently supported are:
 1. [`Loads`](@ref)
 1. [`Generators`](@ref)
 1. [`Branches`](@ref)
-1. [`TwoWindingTransformers`](@ref)
+1. [`Transformers`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
@@ -674,8 +734,8 @@ struct Network
     generators::Generators
     "Non-transformer Branch records."
     branches::Branches
-    "Two-winding Transformer records."
-    two_winding_transformers::TwoWindingTransformers
+    "Transformer records."
+    transformers::Transformers
 end
 
 ###
@@ -704,13 +764,13 @@ function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
         _print_identifiers(IOContext(io, :limit => true), x)
         print(io, "\n")
         # Always show all columns, as it's helpful and there are never 100s.
-        show(IOContext(io, :limit => false), mime, Tables.schema(R))
+        show(IOContext(io, :limit => false, :compact => true), mime, Tables.schema(x))
     end
 end
 
 # default to showing the bus numbers, as all records have this column.
 _print_identifiers(io, x::Records) = print(io, " i : ", x.i)
 # show both ends of branches and transformers
-function _print_identifiers(io, x::Union{Branches, TwoWindingTransformers})
+function _print_identifiers(io, x::Union{Branches, Transformers})
     print(io, " i => j : ", Pair.(x.i, x.j))
 end

@@ -54,7 +54,7 @@ using Test
              $(sprint(show, mime, net.loads; context))
              $(sprint(show, mime, net.generators; context))
              $(sprint(show, mime, net.branches; context))
-             $(sprint(show, mime, net.two_winding_transformers; context))
+             $(sprint(show, mime, net.transformers; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -63,11 +63,11 @@ using Test
         @test repr(mime, net.buses) == strip("""
             Buses with 3 records:
              i : [111, 112, 113]
-            $(sprint(show, mime, Tables.schema(Buses); context=(:limit => true)))
+            $(sprint(show, mime, Tables.schema(net.buses); context=(:limit => true)))
             """
         )
         @test contains(repr(mime, net.branches), "i => j")  # custom branches "identifier"
-        @test contains(repr(mime, net.two_winding_transformers), "i => j")
+        @test contains(repr(mime, net.transformers), "i => j")
     end
 
     @testset "v30 file" begin
@@ -101,7 +101,7 @@ using Test
         @test branches.fi == [1.0, 1.0, 1.0]
         @test branches.ckt[1] == "3 "
 
-        transformers = net1.two_winding_transformers
+        transformers = net1.transformers
         @test transformers.i == [112]           #  1st entry of 1st row
         @test transformers.fi == [1.0]          # last entry of 1st row
         @test transformers.r1_2 == [0.032470]   #  1st entry of 2nd row
@@ -143,7 +143,7 @@ using Test
         @test branches.fi == [1.0, 1.0, 1.0]
         @test branches.ckt[2] == "6 "
 
-        transformers = net2.two_winding_transformers
+        transformers = net2.transformers
         @test length(transformers.i) == 3
         @test transformers.i == [42, 4774, 222222]            #  1st entry of 1st row
         @test transformers.fi == [1.0, 1.0, 1.0]              # last entry of 1st row
