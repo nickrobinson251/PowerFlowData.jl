@@ -24,7 +24,7 @@ struct CaseID <: Tables.AbstractRow
     sbase::Float64
 end
 
-CaseID() = CaseID(0, 100.0)
+CaseID(; ic=0, sbase=100.0) = CaseID(ic, sbase)
 
 Tables.columnnames(::CaseID) = fieldnames(CaseID)
 Tables.getcolumn(cid::CaseID, i::Int) = getfield(cid, i)
@@ -407,3 +407,38 @@ struct Network
     "Non-transformer Branch records."
     branches::Branches
 end
+
+###
+### show
+###
+
+function Base.show(io::IO, mime::MIME"text/plain", network::T) where {T <: Network}
+    nfields = fieldcount(T)
+    print(io, "$T with $nfields data categories:\n ")
+    show(io, mime, network.caseid)
+    io_compact = IOContext(io, :compact => true)
+    foreach(2:nfields) do i
+        print(io, "\n ")
+        show(io_compact, mime, getfield(network, i))
+    end
+end
+
+Base.show(io::IO, x::CaseID) = print(io, "CaseID", NamedTuple(x))  # parseable repr
+Base.show(io::IO, ::MIME"text/plain", x::CaseID) = print(io, "CaseID: ", NamedTuple(x))
+
+function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
+    print(io, "$R with $(Tables.rowcount(x)) records")
+    if !get(io, :compact, false)::Bool
+        print(io, ":\n")
+        # show identifiers, e.g. bus numbers, but limit them as there could be very many.
+        _print_identifiers(IOContext(io, :limit => true), x)
+        print(io, "\n")
+        # Always show all columns, as it's helpful and there are never 100s.
+        show(IOContext(io, :limit => false), mime, Tables.schema(R))
+    end
+end
+
+# default to showing the bus numbers, as all records have this column.
+_print_identifiers(io, x::Records) = print(io, " i : ", x.i)
+# show both ends of branches
+_print_identifiers(io, x::Branches) = print(io, " i => j : ", Pair.(x.i, x.j))
