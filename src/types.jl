@@ -710,5 +710,7 @@ end
 
 # default to showing the bus numbers, as all records have this column.
 _print_identifiers(io, x::Records) = print(io, " i : ", x.i)
-# show both ends of branches
-_print_identifiers(io, x::Branches) = print(io, " i => j : ", Pair.(x.i, x.j))
+# show both ends of branches and transformers
+function _print_identifiers(io, x::Union{Branches, TwoWindingTransformers})
+    print(io, " i => j : ", Pair.(x.i, x.j))
+end

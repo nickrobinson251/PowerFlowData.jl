@@ -48,12 +48,13 @@ using Test
         context = :compact => true
         @test repr(mime, net) == strip(
             """
-            Network with 5 data categories:
+            Network with 6 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
              $(sprint(show, mime, net.generators; context))
              $(sprint(show, mime, net.branches; context))
+             $(sprint(show, mime, net.two_winding_transformers; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -66,6 +67,7 @@ using Test
             """
         )
         @test contains(repr(mime, net.branches), "i => j")  # custom branches "identifier"
+        @test contains(repr(mime, net.two_winding_transformers), "i => j")
     end
 
     @testset "v30 file" begin
