@@ -114,7 +114,10 @@ function count_nrow(buf, pos, len, options)
         pos += res.tlen
         if newline(res.code) || eof(res.code)
             nlines += 1
-            if eof(buf, pos, len) || peekbyte(buf, pos) == UInt8('0')
+            if eof(buf, pos, len) || (
+                !eof(buf, pos, len) && peekbyte(buf, pos) == UInt8('0') &&
+                !eof(buf, pos+1, len) && peekbyte(buf, pos+1) == UInt8(' ')
+            )
                 break
             end
         end
