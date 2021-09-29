@@ -506,14 +506,14 @@ struct Transformers <: Records
     """
     sbase1_2::Vector{Float64}
     # second row, but 3-winding transformers only
-    r2_3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    x2_3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    sbase2_3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    r3_1::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    x3_1::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    sbase3_1::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    vmstar::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    anstar::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    r2_3::Vector{Union{Float64, Missing}}
+    x2_3::Vector{Union{Float64, Missing}}
+    sbase2_3::Vector{Union{Float64, Missing}}
+    r3_1::Vector{Union{Float64, Missing}}
+    x3_1::Vector{Union{Float64, Missing}}
+    sbase3_1::Vector{Union{Float64, Missing}}
+    vmstar::Vector{Union{Float64, Missing}}
+    anstar::Vector{Union{Float64, Missing}}
     # third row
     """
     When `cw` is 1, `windv1` is the winding one off-nominal turns ratio in pu of winding one bus base voltage,
@@ -637,37 +637,37 @@ struct Transformers <: Records
     """
     nomv2::Vector{Float64}
     # fourth row, but 3-winding transformers only
-    ang2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    rata2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    ratb2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    ratc2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    cod2::SentinelVector{Int, Int, Missing, Vector{Int}} # one of: -3, -2, -1, 0, 1, 2, 3
-    cont2::SentinelVector{Int, Int, Missing, Vector{Int}}
-    rma2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    rmi2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    vma2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    vmi2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    ntp2::SentinelVector{Int, Int, Missing, Vector{Int}}
-    tab2::SentinelVector{Int, Int, Missing, Vector{Int}}
-    cr2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    cx2::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    ang2::Vector{Union{Float64, Missing}}
+    rata2::Vector{Union{Float64, Missing}}
+    ratb2::Vector{Union{Float64, Missing}}
+    ratc2::Vector{Union{Float64, Missing}}
+    cod2::Vector{Union{Int, Missing}} # one of: -3, -2, -1, 0, 1, 2, 3
+    cont2::Vector{Union{Int, Missing}}
+    rma2::Vector{Union{Float64, Missing}}
+    rmi2::Vector{Union{Float64, Missing}}
+    vma2::Vector{Union{Float64, Missing}}
+    vmi2::Vector{Union{Float64, Missing}}
+    ntp2::Vector{Union{Int, Missing}}
+    tab2::Vector{Union{Int, Missing}}
+    cr2::Vector{Union{Float64, Missing}}
+    cx2::Vector{Union{Float64, Missing}}
     # fifth row, only 3-winding transformers
-    windv3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    nomv3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    ang3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    rata3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    ratb3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    ratc3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    cod3::SentinelVector{Int, Int, Missing, Vector{Int}}
-    cont3::SentinelVector{Int, Int, Missing, Vector{Int}}
-    rma3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    rmi3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    vma3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    vmi3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    ntp3::SentinelVector{Int, Int, Missing, Vector{Int}}
-    tab3::SentinelVector{Int, Int, Missing, Vector{Int}}
-    cr3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
-    cx3::SentinelVector{Float64, Float64, Missing, Vector{Float64}}
+    windv3::Vector{Union{Float64, Missing}}
+    nomv3::Vector{Union{Float64, Missing}}
+    ang3::Vector{Union{Float64, Missing}}
+    rata3::Vector{Union{Float64, Missing}}
+    ratb3::Vector{Union{Float64, Missing}}
+    ratc3::Vector{Union{Float64, Missing}}
+    cod3::Vector{Union{Int, Missing}}
+    cont3::Vector{Union{Int, Missing}}
+    rma3::Vector{Union{Float64, Missing}}
+    rmi3::Vector{Union{Float64, Missing}}
+    vma3::Vector{Union{Float64, Missing}}
+    vmi3::Vector{Union{Float64, Missing}}
+    ntp3::Vector{Union{Int, Missing}}
+    tab3::Vector{Union{Int, Missing}}
+    cr3::Vector{Union{Float64, Missing}}
+    cx3::Vector{Union{Float64, Missing}}
 end
 
 # Since 2-winding data is a subset of 3-winding data, check at runtime if we have any
