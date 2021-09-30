@@ -277,7 +277,7 @@ are entered in the same data record.
 
 !!! note "Transformers"
     Branches to be modeled as transformers are not specified in this data category;
-    rather, they are specified in the transformer data category.
+    rather, they are specified in the [`Transformers`](@ref) data category.
 
 # Fields
 $TYPEDFIELDS
@@ -362,6 +362,10 @@ struct Branches <: Records
     """
     fi::Vector{Float64}
 end
+
+###
+### Transformers
+###
 
 """
     $TYPEDEF
@@ -670,16 +674,34 @@ struct Transformers <: Records
     cx3::Vector{Union{Float64, Missing}}
 end
 
+# Constants for Transformers data.
+#
+# Transformers data is a bit special, as records have 2 possible schemas
+# see https://github.com/nickrobinson251/PowerFlowData.jl/issues/17
+#
+# Each two-winding transformer ("T2") is 4 lines with (14, 3, 16, 2) columns each, and
+# each three-winding transformer ("T3") is 5 lines with (14, 11, 16, 16, 16) columns each.
+# `TX_COLS[i]` is the (expected) number of columns on line i of X-winding transformer data.
+const T2_COLS = (14,  3, 16,  2)
+const T3_COLS = (14, 11, 16, 16, 16)
+
+# The "columns" (fields) which come at the end of a line in the data.
+const EOL_COLS = cumsum(T3_COLS)
+
+# The fields of the struct that contain data for two-winding transformers.
 const T2_FIELDS = (
     1:T2_COLS[1]...,
     (EOL_COLS[1] + 1):(EOL_COLS[1] + T2_COLS[2])...,
     (EOL_COLS[2] + 1):(EOL_COLS[2] + T2_COLS[3])...,
     (EOL_COLS[3] + 1):(EOL_COLS[3] + T2_COLS[4])...,
 )
+
+_is_t2(x::Transformers) = all(ismissing, x.cx3)
+
 # Since 2-winding data is a subset of 3-winding data, check at runtime if we have any
 # 3-winding data and if not just return the subset of columns required for 2-winding data.
 function Tables.schema(x::R) where {R <: Transformers}
-    return if all(ismissing, x.cx3)
+    return if _is_t2(x)
         Tables.Schema(fieldname.(R, T2_FIELDS), fieldtype.(R, T2_FIELDS))
     else
         Tables.Schema(fieldnames(R), fieldtypes(R))
@@ -689,13 +711,20 @@ end
 # `DataFrame` just calls `columns`, so we need that to return something that respects the
 # schema (which for `Transformers` data depends on the values).
 Tables.columns(x::Transformers) = Tables.columntable(Tables.schema(x), x)
+
+# Again, respect the schema.
+# TODO: Can `schema` or `columnnames` just be defined using the other?
 function Tables.columnnames(x::R) where {R <: Transformers}
-    if all(ismissing, x.cx3)
+    if _is_t2(x)
         fieldname.(R, T2_FIELDS)
     else
         fieldnames(R)
     end
 end
+
+###
+### Network
+###
 
 """
     Network

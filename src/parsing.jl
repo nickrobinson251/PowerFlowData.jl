@@ -170,15 +170,6 @@ end
 ### transformers
 ###
 
-# Transformers data is a bit special, as records have 2 possible schemas
-# see https://github.com/nickrobinson251/PowerFlowData.jl/issues/17
-#
-# Each "two-winding transformer" is 4 lines with (14, 3, 16, 2) columns each, and
-# each "three-winding transformer" is 5 lines with (14, 11, 16, 16, 16) columns each.
-const T2_COLS = (14,  3, 16,  2)
-const T3_COLS = (14, 11, 16, 16, 16)
-const EOL_COLS = cumsum(T3_COLS)
-
 # To hold "three-winding" data we need `sum((14, 11, 16, 16, 16)) == 73` columns, and
 # column 14+3=17 and column 14+11+16+2=43 are "special" in that they may or may not be at
 # the end of a line.
@@ -188,7 +179,7 @@ function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options, eol_o
 
     local code::Parsers.ReturnCode
     col = 1
-    is_2w = false
+    is_t2 = false
     while col < ncols
         eltyp = eltype(fieldtype(typeof(rec), col))
         opts = ifelse(col in EOL_COLS, eol_options, options)
@@ -198,7 +189,7 @@ function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options, eol_o
         @debug codes(code) row col pos newline=newline(code)
 
         if col == (EOL_COLS[1] + T2_COLS[2]) && newline(code)
-            is_2w = true  # it's two-winding data
+            is_t2 = true  # it's two-winding data
             # TODO: handle end-of-line comments on row 2 of 2-winding data...
             # check for `newline || invaliddelimiter` above?
             # if invaliddelimiter(code)
@@ -210,7 +201,7 @@ function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options, eol_o
             end
         end
 
-        if is_2w && col == EOL_COLS[3] + T2_COLS[4]
+        if is_t2 && col == EOL_COLS[3] + T2_COLS[4]
             # TODO: handle end-of-line comments on row 4 of 2-winding data...
             # @assert (newline(code) || invaliddelimiter(code))
             # if invaliddelimiter(code)
