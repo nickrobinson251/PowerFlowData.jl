@@ -674,12 +674,12 @@ end
 # 3-winding data and if not just return the subset of columns required for 2-winding data.
 function Tables.schema(x::R) where {R <: Transformers}
     return if all(ismissing, x.cx3)
-        cols = [
-            1:T2_COLS[1];
-            (EOL_COLS[1] + 1):(EOL_COLS[1] + T2_COLS[2]);
-            (EOL_COLS[2] + 1):(EOL_COLS[2] + T2_COLS[3]);
-            (EOL_COLS[3] + 1):(EOL_COLS[3] + T2_COLS[4]);
-        ]
+        cols = (
+            1:T2_COLS[1]...,
+            (EOL_COLS[1] + 1):(EOL_COLS[1] + T2_COLS[2])...,
+            (EOL_COLS[2] + 1):(EOL_COLS[2] + T2_COLS[3])...,
+            (EOL_COLS[3] + 1):(EOL_COLS[3] + T2_COLS[4])...,
+        )
         Tables.Schema(fieldname.(R, cols), fieldtype.(R, cols))
     else
         Tables.Schema(fieldnames(R), fieldtypes(R))
