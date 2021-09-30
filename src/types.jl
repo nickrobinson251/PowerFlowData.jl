@@ -670,17 +670,17 @@ struct Transformers <: Records
     cx3::Vector{Union{Float64, Missing}}
 end
 
+const T2_FIELDS = (
+    1:T2_COLS[1]...,
+    (EOL_COLS[1] + 1):(EOL_COLS[1] + T2_COLS[2])...,
+    (EOL_COLS[2] + 1):(EOL_COLS[2] + T2_COLS[3])...,
+    (EOL_COLS[3] + 1):(EOL_COLS[3] + T2_COLS[4])...,
+)
 # Since 2-winding data is a subset of 3-winding data, check at runtime if we have any
 # 3-winding data and if not just return the subset of columns required for 2-winding data.
 function Tables.schema(x::R) where {R <: Transformers}
     return if all(ismissing, x.cx3)
-        cols = (
-            1:T2_COLS[1]...,
-            (EOL_COLS[1] + 1):(EOL_COLS[1] + T2_COLS[2])...,
-            (EOL_COLS[2] + 1):(EOL_COLS[2] + T2_COLS[3])...,
-            (EOL_COLS[3] + 1):(EOL_COLS[3] + T2_COLS[4])...,
-        )
-        Tables.Schema(fieldname.(R, cols), fieldtype.(R, cols))
+        Tables.Schema(fieldname.(R, T2_FIELDS), fieldtype.(R, T2_FIELDS))
     else
         Tables.Schema(fieldnames(R), fieldtypes(R))
     end
@@ -689,6 +689,13 @@ end
 # `DataFrame` just calls `columns`, so we need that to return something that respects the
 # schema (which for `Transformers` data depends on the values).
 Tables.columns(x::Transformers) = Tables.columntable(Tables.schema(x), x)
+function Tables.columnnames(x::R) where {R <: Transformers}
+    if all(ismissing, x.cx3)
+        fieldname.(R, T2_FIELDS)
+    else
+        fieldnames(R)
+    end
+end
 
 """
     Network
