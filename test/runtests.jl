@@ -60,12 +60,7 @@ using Test
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
 
         @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 3 records"
-        @test repr(mime, net.buses) == strip("""
-            Buses with 3 records:
-             i : [111, 112, 113]
-            $(sprint(show, mime, Tables.schema(net.buses); context=(:limit => true)))
-            """
-        )
+        @test startswith(repr(mime, net.buses), "Buses with 3 records:\n i : [111, 112, 113]")
         @test contains(repr(mime, net.branches), "i => j")  # custom branches "identifier"
         @test contains(repr(mime, net.transformers), "i => j")
     end
