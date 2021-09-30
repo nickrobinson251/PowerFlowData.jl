@@ -35,7 +35,7 @@ abstract type Records end
 
 # Create a instance of a `Records` subtype, with all fields (assumed to be Vector)
 # containing `nrow` elements (initialised to undefined values, as they'll be overwritten).
-(::Type{R})(nrow) where {R <: Records} = R(map(T -> T(undef, (nrow,)), fieldtypes(R))...)
+(::Type{R})(nrow) where {R <: Records} = R(map(T -> T(undef, nrow), fieldtypes(R))...)
 
 # Store data in column table so conversion to DataFrame efficient.
 Tables.istable(::Type{<:Records}) = true
