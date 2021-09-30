@@ -180,8 +180,8 @@ function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options, eol_o
     local code::Parsers.ReturnCode
     col = 1
     is_t2 = false
-    while col < ncols
-        eltyp = eltype(fieldtype(typeof(rec), col))
+    while col ≤ ncols
+        eltyp = nonmissingtype(eltype(fieldtype(typeof(rec), col)))
         opts = ifelse(col in EOL_COLS, eol_options, options)
         val, pos, code = parse_value(eltyp, bytes, pos, len, opts)
         @inbounds getfield(rec, col)[row] = val
