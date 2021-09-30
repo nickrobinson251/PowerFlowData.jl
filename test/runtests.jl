@@ -48,12 +48,13 @@ using Test
         context = :compact => true
         @test repr(mime, net) == strip(
             """
-            Network with 5 data categories:
+            Network with 6 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
              $(sprint(show, mime, net.generators; context))
              $(sprint(show, mime, net.branches; context))
+             $(sprint(show, mime, net.two_winding_transformers; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -66,6 +67,7 @@ using Test
             """
         )
         @test contains(repr(mime, net.branches), "i => j")  # custom branches "identifier"
+        @test contains(repr(mime, net.two_winding_transformers), "i => j")
     end
 
     @testset "v30 file" begin
@@ -98,6 +100,17 @@ using Test
         @test branches.j == [112, -113, 113]  # negative numbers should be allowed
         @test branches.fi == [1.0, 1.0, 1.0]
         @test branches.ckt[1] == "3 "
+
+        transformers = net1.two_winding_transformers
+        @test transformers.i == [112]           #  1st entry of 1st row
+        @test transformers.fi == [1.0]          # last entry of 1st row
+        @test transformers.r1_2 == [0.032470]   #  1st entry of 2nd row
+        @test transformers.sbase1_2 == [200.0]  # last entry of 2nd row
+        @test transformers.windv1 == [1.0]      #  1st entry of 3rd row
+        @test transformers.cx1 == [0.0]         # last entry of 3rd row
+        @test transformers.windv2 == [1.0]      #  1st entry of 4th row
+        @test transformers.nomv2 == [169.0]     # last entry of 4th row
+        @test transformers.ckt[1] == "G1"       # string col
     end
 
     @testset "v29 file" begin
@@ -130,5 +143,18 @@ using Test
         @test branches.fi == [1.0, 1.0, 1.0]
         @test branches.ckt[2] == "6 "
 
+        transformers = net2.two_winding_transformers
+        @test length(transformers.i) == 3
+        @test transformers.i == [42, 4774, 222222]            #  1st entry of 1st row
+        @test transformers.fi == [1.0, 1.0, 1.0]              # last entry of 1st row
+        @test transformers.r1_2 == [0.0025, 0.0, 0.0005]      #  1st entry of 2nd row
+        @test transformers.sbase1_2 == [100.0, 100.0, 100.0]  # last entry of 2nd row
+        @test transformers.windv1 == [1.0, 1.0462, 1.0]       #  1st entry of 3rd row
+        @test transformers.cx1 == [0.0, 0.0, 0.0]             # last entry of 3rd row
+        # Important to test a row where the 1st character is '0', to get it does not
+        # get misinterpreted as the start of a "0 bus" records terminating the section.
+        @test transformers.windv2 == [1.0, 1.045, 0.98250]    #  1st entry of 4th row
+        @test transformers.nomv2 == [138.0, 240.35, 345.0]    # last entry of 4th row
+        @test transformers.ckt == ["K1", "90", "B1"]          # string col
     end
 end

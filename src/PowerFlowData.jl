@@ -8,7 +8,7 @@ using WeakRefStrings: InlineString3, InlineString15
 
 export parse_network
 export Network
-export CaseID, Buses, Loads, Generators, Branches
+export CaseID, Buses, Loads, Generators, Branches, TwoWindingTransformers
 
 include("types.jl")
 include("parsing.jl")
