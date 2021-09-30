@@ -47,7 +47,7 @@ Buses
 Loads
 Generators
 Branches
-TwoWindingTransformers
+Transformers
 ```
 
 ## Alternatives
