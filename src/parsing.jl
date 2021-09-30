@@ -55,7 +55,11 @@ function parse_network(source)
     @debug "branches" nrows pos
     branches, pos = parse_records!(Branches(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS)
 
-    nrows = count_nrow(bytes, pos, len, OPTIONS) ÷ 4  # Two-winding Transformers data is 4 lines each
+    # 2-winding Transformers data is 4 lines each... so this will be correct when all
+    # transformers as 2-winding, and become incorrect once there are multiple 3-winding.
+    # TODO: ditch counting of rows and use `push!`
+    # https://github.com/nickrobinson251/PowerFlowData.jl/issues/5
+    nrows = count_nrow(bytes, pos, len, OPTIONS) ÷ 4
     @debug "2-winding transformers" nrows pos
     transformers, pos = parse_records!(
         Transformers(nrows), bytes, pos, len, OPTIONS, EOL_OPTIONS
