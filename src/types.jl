@@ -406,7 +406,7 @@ struct Transformers <: Records
     third winding is connected. Zero is used to indicate that no third winding is present.
     _Always equal to zero for a two-winding transformer._
     """
-    k::Vector{Bool} # always zero
+    k::Vector{Int}
     """
     One- or two-character uppercase nonblank alphanumeric transformer circuit identifier;
     the first character of `ckt` must not be an ampersand ('&').
