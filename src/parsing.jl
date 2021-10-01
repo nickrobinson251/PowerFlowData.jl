@@ -192,13 +192,9 @@ function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options, eol_o
 
         @debug codes(code) row col pos newline=newline(code)
 
+        # TODO: handle 2-winding data with end-of-line comments on row 2.
         if col == (EOL_COLS[1] + T2_COLS[2]) && newline(code)
             is_t2 = true  # it's two-winding data
-            # TODO: handle end-of-line comments on row 2 of 2-winding data...
-            # check for `newline || invaliddelimiter` above?
-            # if invaliddelimiter(code)
-            #     pos = next_line(bytes, pos, len)
-            # end
             while col < EOL_COLS[2]  # the rest of line 2 is missing
                 col += 1
                 @inbounds getfield(rec, col)[row] = missing
@@ -206,11 +202,7 @@ function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options, eol_o
         end
 
         if is_t2 && col == EOL_COLS[3] + T2_COLS[4]
-            # TODO: handle end-of-line comments on row 4 of 2-winding data...
-            # @assert (newline(code) || invaliddelimiter(code))
-            # if invaliddelimiter(code)
-            #     pos = next_line(bytes, pos, len)
-            # end
+            # TODO: handle end-of-line comments on row 4 of 2-winding data.
             while col < EOL_COLS[5]  # the rest of line 4 and all of line 5 is missing
                 col += 1
                 @inbounds getfield(rec, col)[row] = missing
