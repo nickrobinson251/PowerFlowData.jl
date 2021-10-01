@@ -103,7 +103,7 @@ using Test
         @test transformers.sbase1_2 == [200.0, 200.0]          # last entry of 2nd row (T2)
         @test isequal(transformers.anstar, [missing, 1.01893]) # last entry of 2nd row (T3)
         @test transformers.windv1 == [1.0, 1.0]                #  1st entry of 3rd row
-        @test transformers.cx1 == [0.0, 0.0]                   # last entry of 3rd row (T2)
+        @test transformers.cx1 == [0.0, 0.0]                   # last entry of 3rd row
         @test transformers.windv2 == [1.0, 1.0]                #  1st entry of 4th row
         @test transformers.nomv2 == [169.0, 169.0]             # last entry of 4th row (T2)
         @test isequal(transformers.cx2, [missing, 0.0])        # last entry of 4th row (T3)

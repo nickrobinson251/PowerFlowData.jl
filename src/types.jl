@@ -885,7 +885,7 @@ struct Transformers <: Records
     """
     `rma3` is the upper limit (and `rmi3` the lower limit) of either:
     * Off-nominal turns ratio in pu of winding three bus base voltage when `|cod3|` is 1 or 2 and `cw` is 1;
-        `rma3` = 1.1 and `rmi3` = 0.9 by default.
+      `rma3` = 1.1 and `rmi3` = 0.9 by default.
     * Actual winding one voltage in kV when `|cod3|` is 1 or 2 and `cw` is 2. No default is allowed.
     * Phase shift angle in degrees when `|cod3|` is 3. No default is allowed.
     * Not used when `|cod3|` is 0;
@@ -901,11 +901,11 @@ struct Transformers <: Records
     """
     `vma3` is the upper limit (and `vmi3` the lower limit) of either:
     * Voltage at the controlled bus (bus `|cont3|`) in pu when `|cod3|` is 1.
-        `vma3` = 1.1 and `vmi3` = 0.9 by default.
+      `vma3` = 1.1 and `vmi3` = 0.9 by default.
     * Reactive power flow into the transformer at the winding three bus end in Mvar when `|cod3|` is 2.
-        No default is allowed.
+      No default is allowed.
     * Active power flow into the transformer at the winding two bus end in MW when `|cod3|` is 3.
-        No default is allowed.
+      No default is allowed.
     * Not used when `|cod3|` is 0; `vma3` = 1.1 and `vmi3` = 0.9 by default.
     _Ignored for a two-winding transformer._
     """
