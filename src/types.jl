@@ -43,7 +43,7 @@ Tables.columnaccess(::Type{<:Records}) = true
 Tables.columns(x::Records) = x
 Tables.getcolumn(x::Records, i::Int) = getfield(x, i)
 Tables.columnnames(R::Type{<:Records}) = fieldnames(R)
-Tables.schema(R::Type{<:Records}) = Tables.Schema(fieldnames(R), fieldtypes(R))
+Tables.schema(x::R) where {R <: Records} = Tables.Schema(fieldnames(R), fieldtypes(R))
 
 """
     $TYPEDEF
@@ -277,7 +277,7 @@ are entered in the same data record.
 
 !!! note "Transformers"
     Branches to be modeled as transformers are not specified in this data category;
-    rather, they are specified in the transformer data category.
+    rather, they are specified in the [`Transformers`](@ref) data category.
 
 # Fields
 $TYPEDFIELDS
@@ -363,6 +363,10 @@ struct Branches <: Records
     fi::Vector{Float64}
 end
 
+###
+### Transformers
+###
+
 """
     $TYPEDEF
 
@@ -375,17 +379,15 @@ which define the manner in which transformer impedance changes as off-nominal tu
 phase shift angle is adjusted. Those data records are described in Transformer Impedance
 Correction Tables.
 
-!!! note "Currently only two-winding transformers are supported."
-    In PSS/E files, both two-winding and three-winding transformers are specified in
-    transformer data records. The fields for the two-winding transformers are common to
-    the three-winding transformers; data for two-winding transformers is a subset of the
-    data required for three-winding transformers. _Currently all data in the transformer
-    records is assumed to be for two-winding transformers._
+Both two-winding and three-winding transformers are specified in the transformer data records.
+The data records for the two-winding transformer are common to the three-winding transformer;
+the data block for two-winding transformers is a subset of the data required for three-winding
+transformers.
 
 # Fields
 $TYPEDFIELDS
 """
-struct TwoWindingTransformers <: Records
+struct Transformers <: Records
     # first row
     """
     The bus number, or extended bus name enclosed in single quotes, of the bus to which the
@@ -406,7 +408,7 @@ struct TwoWindingTransformers <: Records
     third winding is connected. Zero is used to indicate that no third winding is present.
     _Always equal to zero for a two-winding transformer._
     """
-    k::Vector{Bool} # always zero
+    k::Vector{Int}
     """
     One- or two-character uppercase nonblank alphanumeric transformer circuit identifier;
     the first character of `ckt` must not be an ampersand ('&').
@@ -505,6 +507,72 @@ struct TwoWindingTransformers <: Records
     `sbase1_2` = `sbase` (the system base MVA) by default.
     """
     sbase1_2::Vector{Float64}
+    # second row, but 3-winding transformers only
+    """
+    The measured impedance of a three-winding transformer between the buses to which its
+    second and third windings are connected (see also `x2_3`).
+    * When `cz` is 1, `r2_3` is the resistance in pu on system base quantities;
+    * when `cz` is 2, `r2_3` is the resistance in pu on winding two to three base MVA (`sbase2_3`) and winding two bus base voltage;
+    * when `cz` is 3, `r2_3` is the load loss in watts
+    `r2_3` = 0.0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    r2_3::Vector{Union{Float64, Missing}}
+    """
+    The measured impedance of a three-winding transformer between the buses to which its
+    second and third windings are connected (see also `x2_3`).
+    * When `cz` is 1, `x2_3` is the reactance in pu on system base quantities;
+    * when `cz` is 2, `x2_3` is the reactance in pu on winding one to two base MVA (`sbas2_3`) and winding one bus base voltage;
+    * when `cz` is 3, `x2_3` is the impedance magnitude in pu on winding two to three base MVA (`sbase2_3`) and winding two bus base voltage.
+    `x2_3` has no default.
+    _Ignored for a two-winding transformer._
+    """
+    x2_3::Vector{Union{Float64, Missing}}
+    """
+    The winding two to three base MVA of a three-winding transformer; ignored for a two-winding
+    transformer.
+    `sbase2_3` = `sbase` (the system base MVA) by default.
+    _Ignored for a two-winding transformer._
+    """
+    sbase2_3::Vector{Union{Float64, Missing}}
+    """
+    The measured impedance of a three-winding transformer between the buses to which its
+    third and first windings are connected (see also `x3_1`).
+    * When `cz` is 1, `r3_1` is the resistance in pu on system base quantities;
+    * when `cz` is 2, `r3_1` is the resistance in pu on winding three to one base MVA (`sbase3_1`) and winding three bus base voltage;
+    * when `cz` is 3, `r3_1` is the load loss in watts
+    `r3_1` = 0.0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    r3_1::Vector{Union{Float64, Missing}}
+    """
+    The measured impedance of a three-winding transformer between the buses to which its
+    third and first windings are connected (see also `x3_1`).
+    * When `cz` is 1, `x3_1` is the reactance in pu on system base quantities;
+    * when `cz` is 2, `x3_1` is the reactance in pu on winding three to one base MVA (`sbas3_1`) and winding three bus base voltage;
+    * when `cz` is 3, `x3_1` is the impedance magnitude in pu on winding three to one base MVA (`sbase3_1`) and winding three bus base voltage.
+    `x3_1` has no default.
+    _Ignored for a two-winding transformer._
+    """
+    x3_1::Vector{Union{Float64, Missing}}
+    """
+    The winding three to one base MVA of a three-winding transformer.
+    `sbase3_1` = `sbase` (the system base MVA) by default.
+    _Ignored for a two-winding transformer._
+    """
+    sbase3_1::Vector{Union{Float64, Missing}}
+    """
+    The voltage magnitude at the hidden star point bus; entered in pu.
+    `vmstar` = 1.0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    vmstar::Vector{Union{Float64, Missing}}
+    """
+    The bus voltage phase angle at the hidden star point bus; entered in degrees.
+    `anstar` = 0.0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    anstar::Vector{Union{Float64, Missing}}
     # third row
     """
     When `cw` is 1, `windv1` is the winding one off-nominal turns ratio in pu of winding one bus base voltage,
@@ -573,7 +641,7 @@ struct TwoWindingTransformers <: Records
     * Off-nominal turns ratio in pu of winding one bus base voltage when `|cod1|` is 1 or 2 and `cw` is 1;
       `rma1` = 1.1 and `rmi1` = 0.9 by default.
     * Actual winding one voltage in kV when `|cod1|` is 1 or 2 and `cw` is 2. No default is allowed.
-    * Phase shift angl e in degrees when |COD1| is 3. No default is allowed.
+    * Phase shift angl e in degrees when `|cod1|` is 3. No default is allowed.
     * Not used when `|cod1|` is 0 or 4;
     `rma1` = 1.1 and `rmi1` = 0.9 by default.
     """
@@ -616,19 +684,317 @@ struct TwoWindingTransformers <: Records
     When `cw` is 1, `windv2` is the winding two off-nominal turns ratio in pu of winding two bus base voltage,
     and `windv2` = 1.0 by default.
     When `cw` is 2, `windv2` is the actual winding two voltage in kV,
-    and `windv2` is equal to the base voltage of bus "J" by default.
+    and `windv2` is equal to the base voltage of bus `j` by default.
     """
     windv2::Vector{Float64}
     """
     The nominal (rated) winding two voltage in kV, or zero to indicate that nominal winding
-    two voltage is to be taken as the base voltage of bus "J".
+    two voltage is to be taken as the base voltage of bus `j`.
     `nomv2` is present for information purposes only; it is not used in any of the calculations
     for modeling the transformer.
     `nomv2` = 0.0 by default.
     """
     nomv2::Vector{Float64}
+    # fourth row, but 3-winding transformers only
+    """
+    The winding two phase shift angle in degrees.
+    `ang2` is positive for a positive phase shift from the winding two side to the "T"
+    (or star) point bus.
+    `ang2` must be greater than -180.0 and less than or equal to +180.0.
+    `ang2` = 0.0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    ang2::Vector{Union{Float64, Missing}}
+    """
+    The second winding’s first rating entered in MVA (not current expressed in MVA).
+    _Ignored for a two-winding transformer._
+    """
+    rata2::Vector{Union{Float64, Missing}}
+    """
+    The second winding’s second rating entered in MVA (not current expressed in MVA).
+    _Ignored for a two-winding transformer._
+    """
+    ratb2::Vector{Union{Float64, Missing}}
+    """
+    The second winding’s third rating entered in MVA (not current expressed in MVA).
+    _Ignored for a two-winding transformer._
+    """
+    ratc2::Vector{Union{Float64, Missing}}
+    """
+    The transformer control mode for automatic adjustments of the winding two tap or phase
+    shift angle during power flow solutions:
+    * 0 for no control (fixed tap and phase shift);
+    * ±1 for voltage control;
+    * ±2 for reactive power flow control;
+    * ±3 for active power flow control.
+    If the control mode is entered as a positive number, automatic adjustment of this transformer
+    winding is enabled when the corresponding adjustment is activated during power flow solutions;
+    a negative control mode suppresses the automatic adjustment of this transformer winding.
+    `cod2` = 0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    cod2::Vector{Union{Int, Missing}} # one of: -3, -2, -1, 0, 1, 2, 3
+    """
+    The bus number, or extended bus name enclosed in single quotes, of the bus whose voltage
+    is to be controlled by the transformer turns ratio adjustment option of the power flow
+    solution activities when `cod2` is 1.
+    `cont2` should be nonzero only for voltage controlling transformer windings.
+
+    `cont2` may specify a bus other than `i`, `j`, or `k`; in this case, the sign of
+    `cont2` defines the location of the controlled bus relative to the transformer winding.
+    If `cont2` is entered as a positive number, or a quoted extended bus name, the ratio is
+    adjusted as if bus `cont2` is on the winding one or winding three side of the transformer;
+    if `cont2` is entered as a negative number, or a quoted extended bus name with a minus sign
+    preceding the first character, the ratio is adjusted as if bus `|cont2|` is on the winding
+    two side of the transformer. `cont2` = 0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    cont2::Vector{Union{Int, Missing}}
+    """
+    `rma2` is the upper limit (and `rmi2` the lower limit) of either:
+    * Off-nominal turns ratio in pu of winding two bus base voltage when `|cod2|` is 1 or 2 and `cw` is 1;
+        `rma2` = 1.1 and `rmi2` = 0.9 by default.
+    * Actual winding one voltage in kV when `|cod2|` is 1 or 2 and `cw` is 2. No default is allowed.
+    * Phase shift angle in degrees when `|cod2|` is 3. No default is allowed.
+    * Not used when `|cod2|` is 0;
+    `rma2` = 1.1 and `rmi2` = 0.9 by default.
+    _Ignored for a two-winding transformer._
+    """
+    rma2::Vector{Union{Float64, Missing}}
+    """
+    The lower limit to `rma2`'s upper limit. See `rma2` for details.
+    _Ignored for a two-winding transformer._
+    """
+    rmi2::Vector{Union{Float64, Missing}}
+    """
+    `vma2` is the upper limit (and `vmi2` the lower limit) of either:
+    * Voltage at the controlled bus (bus `|cont2|`) in pu when `|cod2|` is 1.
+        `vma2` = 1.1 and `vmi2` = 0.9 by default.
+    * Reactive power flow into the transformer at the winding two bus end in Mvar when `|cod2|` is 2.
+        No default is allowed.
+    * Active power flow into the transformer at the winding two bus end in MW when `|cod2|` is 3.
+        No default is allowed.
+    * Not used when `|cod2|` is 0; `vma2` = 1.1 and `vmi2` = 0.9 by default.
+    _Ignored for a two-winding transformer._
+    """
+    vma2::Vector{Union{Float64, Missing}}
+    """
+    The lower limit to `vma1`'s upper limit. See `vma1` for details.
+    _Ignored for a two-winding transformer._
+    """
+    vmi2::Vector{Union{Float64, Missing}}
+    """
+    The number of tap positions available; used when `cod2` is 1 or 2.
+    `ntp2` must be between 2 and 9999.
+    `ntp2` = 33 by default.
+    _Ignored for a two-winding transformer._
+    """
+    ntp2::Vector{Union{Int, Missing}}
+    """
+    The number of a transformer impedance correction table if this transformer winding’s
+    impedance is to be a function of either off-nominal turns ratio or phase shift angle,
+    or 0 if no transformer impedance correction is to be applied to this transformer winding.
+    `tab2` = 0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    tab2::Vector{Union{Int, Missing}}
+    """
+    The load drop compensation impedance for voltage controlling transformers entered in pu
+    on system base quantities; used when `cod2` is 1.
+    `cr2` + j`cx2` = 0.0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    cr2::Vector{Union{Float64, Missing}}
+    """
+    See `cr2` for details.
+    _Ignored for a two-winding transformer._
+    """
+    cx2::Vector{Union{Float64, Missing}}
+    # fifth row, only 3-winding transformers
+    """
+    When `cw` is 1, `windv3` is the winding three off-nominal turns ratio in pu of winding three bus base voltage,
+    and windv3 = 1.0 by default.
+    When `cw` is 2, `windv3` is the actual winding three voltage in kV,
+    and `windv3` is equal to the base voltage of bus `k` by default.
+    _Ignored for a two-winding transformer._
+    """
+    windv3::Vector{Union{Float64, Missing}}
+    """
+    The nominal (rated) winding three voltage in kV, or zero to indicate that nominal winding
+    two voltage is to be taken as the base voltage of bus `j`.
+    `nomv3` is present for information purposes only; it is not used in any of the calculations
+    for modeling the transformer.
+    `nomv3` = 0.0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    nomv3::Vector{Union{Float64, Missing}}
+    """
+    The winding three phase shift angle in degrees.
+    `ang3` is positive for a positive phase shift from the winding two side to the "T"
+    (or star) point bus.
+    `ang3` must be greater than -180.0 and less than or equal to +180.0.
+    `ang3` = 0.0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    ang3::Vector{Union{Float64, Missing}}
+    """
+    The third winding’s first rating entered in MVA (not current expressed in MVA).
+    _Ignored for a two-winding transformer._
+    """
+    rata3::Vector{Union{Float64, Missing}}
+    """
+    The third winding’s second rating entered in MVA (not current expressed in MVA).
+    _Ignored for a two-winding transformer._
+    """
+    ratb3::Vector{Union{Float64, Missing}}
+    """
+    The third winding’s third rating entered in MVA (not current expressed in MVA).
+    _Ignored for a two-winding transformer._
+    """
+    ratc3::Vector{Union{Float64, Missing}}
+    """
+    The transformer control mode for automatic adjustments of the winding three tap or phase
+    shift angle during power flow solutions:
+    * 0 for no control (fixed tap and phase shift);
+    * ±1 for voltage control;
+    * ±2 for reactive power flow control;
+    * ±3 for active power flow control.
+    If the control mode is entered as a positive number, automatic adjustment of this transformer
+    winding is enabled when the corresponding adjustment is activated during power flow solutions;
+    a negative control mode suppresses the automatic adjustment of this transformer winding.
+    `cod3` = 0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    cod3::Vector{Union{Int, Missing}}
+    """
+    The bus number, or extended bus name enclosed in single quotes, of the bus whose voltage
+    is to be controlled by the transformer turns ratio adjustment option of the power flow
+    solution activities when `cod3` is 1.
+    `cont3` should be nonzero only for voltage controlling transformer windings.
+
+    `cont3` may specify a bus other than `i`, `j`, or `k`; in this case, the sign of
+    `cont3` defines the location of the controlled bus relative to the transformer winding.
+    If `cont3` is entered as a positive number, or a quoted extended bus name, the ratio is
+    adjusted as if bus `cont3` is on the winding one or winding two side of the transformer;
+    if `cont3` is entered as a negative number, or a quoted extended bus name with a minus sign
+    preceding the first character, the ratio is adjusted as if bus `|cont3|` is on the winding
+    three side of the transformer. `cont3` = 0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    cont3::Vector{Union{Int, Missing}}
+    """
+    `rma3` is the upper limit (and `rmi3` the lower limit) of either:
+    * Off-nominal turns ratio in pu of winding three bus base voltage when `|cod3|` is 1 or 2 and `cw` is 1;
+      `rma3` = 1.1 and `rmi3` = 0.9 by default.
+    * Actual winding one voltage in kV when `|cod3|` is 1 or 2 and `cw` is 2. No default is allowed.
+    * Phase shift angle in degrees when `|cod3|` is 3. No default is allowed.
+    * Not used when `|cod3|` is 0;
+    `rma3` = 1.1 and `rmi3` = 0.9 by default.
+    _Ignored for a two-winding transformer._
+    """
+    rma3::Vector{Union{Float64, Missing}}
+    """
+    The lower limit to `rma3`'s upper limit. See `rma3` for details.
+    _Ignored for a two-winding transformer._
+    """
+    rmi3::Vector{Union{Float64, Missing}}
+    """
+    `vma3` is the upper limit (and `vmi3` the lower limit) of either:
+    * Voltage at the controlled bus (bus `|cont3|`) in pu when `|cod3|` is 1.
+      `vma3` = 1.1 and `vmi3` = 0.9 by default.
+    * Reactive power flow into the transformer at the winding three bus end in Mvar when `|cod3|` is 2.
+      No default is allowed.
+    * Active power flow into the transformer at the winding two bus end in MW when `|cod3|` is 3.
+      No default is allowed.
+    * Not used when `|cod3|` is 0; `vma3` = 1.1 and `vmi3` = 0.9 by default.
+    _Ignored for a two-winding transformer._
+    """
+    vma3::Vector{Union{Float64, Missing}}
+    """
+    The lower limit to `vma3`'s upper limit. See `vma3` for details.
+    _Ignored for a two-winding transformer._
+    """
+    vmi3::Vector{Union{Float64, Missing}}
+    """
+    The number of tap positions available; used when `cod3` is 1 or 2.
+    `ntp3` must be between 2 and 9999.
+    `ntp3` = 33 by default.
+    _Ignored for a two-winding transformer._
+    """
+    ntp3::Vector{Union{Int, Missing}}
+    """
+    The number of a transformer impedance correction table if this transformer winding’s
+    impedance is to be a function of either off-nominal turns ratio or phase shift angle,
+    or 0 if no transformer impedance correction is to be applied to this transformer winding.
+    `tab3` = 0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    tab3::Vector{Union{Int, Missing}}
+    """
+    The load drop compensation impedance for voltage controlling transformers entered in pu
+    on system base quantities; used when `cod3` is 1.
+    `cr3` + j`cx3` = 0.0 by default.
+    _Ignored for a two-winding transformer._
+    """
+    cr3::Vector{Union{Float64, Missing}}
+    """
+    See `cr3` for details.
+    _Ignored for a two-winding transformer._
+    """
+    cx3::Vector{Union{Float64, Missing}}
 end
 
+# Constants for Transformers data.
+#
+# Transformers data is a bit special, as records have 2 possible schemas
+# see https://github.com/nickrobinson251/PowerFlowData.jl/issues/17
+#
+# Each two-winding transformer ("T2") is 4 lines with (14, 3, 16, 2) columns each, and
+# each three-winding transformer ("T3") is 5 lines with (14, 11, 16, 16, 16) columns each.
+# `TX_COLS[i]` is the (expected) number of columns on line i of X-winding transformer data.
+const T2_COLS = (14,  3, 16,  2)
+const T3_COLS = (14, 11, 16, 16, 16)
+
+# The "columns" (fields) which come at the end of a line in the data.
+const EOL_COLS = cumsum(T3_COLS)
+
+# The fields of the struct that contain data for two-winding transformers.
+const T2_FIELDS = (
+    1:T2_COLS[1]...,
+    (EOL_COLS[1] + 1):(EOL_COLS[1] + T2_COLS[2])...,
+    (EOL_COLS[2] + 1):(EOL_COLS[2] + T2_COLS[3])...,
+    (EOL_COLS[3] + 1):(EOL_COLS[3] + T2_COLS[4])...,
+)
+
+_is_t2(x::Transformers) = all(ismissing, x.cx3)
+
+# Since 2-winding data is a subset of 3-winding data, check at runtime if we have any
+# 3-winding data and if not just return the subset of columns required for 2-winding data.
+function Tables.schema(x::R) where {R <: Transformers}
+    return if _is_t2(x)
+        Tables.Schema(fieldname.(R, T2_FIELDS), fieldtype.(R, T2_FIELDS))
+    else
+        Tables.Schema(fieldnames(R), fieldtypes(R))
+    end
+end
+
+# `DataFrame` just calls `columns`, so we need that to return something that respects the
+# schema (which for `Transformers` data depends on the values).
+Tables.columns(x::Transformers) = Tables.columntable(Tables.schema(x), x)
+
+# Again, respect the schema.
+# TODO: Can `schema` or `columnnames` just be defined using the other?
+function Tables.columnnames(x::R) where {R <: Transformers}
+    if _is_t2(x)
+        fieldname.(R, T2_FIELDS)
+    else
+        fieldnames(R)
+    end
+end
+
+###
+### Network
+###
 
 """
     Network
@@ -646,7 +1012,7 @@ Currently supported are:
 1. [`Loads`](@ref)
 1. [`Generators`](@ref)
 1. [`Branches`](@ref)
-1. [`TwoWindingTransformers`](@ref)
+1. [`Transformers`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
@@ -674,8 +1040,8 @@ struct Network
     generators::Generators
     "Non-transformer Branch records."
     branches::Branches
-    "Two-winding Transformer records."
-    two_winding_transformers::TwoWindingTransformers
+    "Transformer records."
+    transformers::Transformers
 end
 
 ###
@@ -704,13 +1070,13 @@ function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
         _print_identifiers(IOContext(io, :limit => true), x)
         print(io, "\n")
         # Always show all columns, as it's helpful and there are never 100s.
-        show(IOContext(io, :limit => false), mime, Tables.schema(R))
+        show(IOContext(io, :limit => false, :compact => true), mime, Tables.schema(x))
     end
 end
 
 # default to showing the bus numbers, as all records have this column.
 _print_identifiers(io, x::Records) = print(io, " i : ", x.i)
 # show both ends of branches and transformers
-function _print_identifiers(io, x::Union{Branches, TwoWindingTransformers})
+function _print_identifiers(io, x::Union{Branches, Transformers})
     print(io, " i => j : ", Pair.(x.i, x.j))
 end

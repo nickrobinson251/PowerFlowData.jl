@@ -54,20 +54,15 @@ using Test
              $(sprint(show, mime, net.loads; context))
              $(sprint(show, mime, net.generators; context))
              $(sprint(show, mime, net.branches; context))
-             $(sprint(show, mime, net.two_winding_transformers; context))
+             $(sprint(show, mime, net.transformers; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
 
         @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 3 records"
-        @test repr(mime, net.buses) == strip("""
-            Buses with 3 records:
-             i : [111, 112, 113]
-            $(sprint(show, mime, Tables.schema(Buses); context=(:limit => true)))
-            """
-        )
+        @test startswith(repr(mime, net.buses), "Buses with 3 records:\n i : [111, 112, 113]")
         @test contains(repr(mime, net.branches), "i => j")  # custom branches "identifier"
-        @test contains(repr(mime, net.two_winding_transformers), "i => j")
+        @test contains(repr(mime, net.transformers), "i => j")
     end
 
     @testset "v30 file" begin
@@ -101,16 +96,24 @@ using Test
         @test branches.fi == [1.0, 1.0, 1.0]
         @test branches.ckt[1] == "3 "
 
-        transformers = net1.two_winding_transformers
-        @test transformers.i == [112]           #  1st entry of 1st row
-        @test transformers.fi == [1.0]          # last entry of 1st row
-        @test transformers.r1_2 == [0.032470]   #  1st entry of 2nd row
-        @test transformers.sbase1_2 == [200.0]  # last entry of 2nd row
-        @test transformers.windv1 == [1.0]      #  1st entry of 3rd row
-        @test transformers.cx1 == [0.0]         # last entry of 3rd row
-        @test transformers.windv2 == [1.0]      #  1st entry of 4th row
-        @test transformers.nomv2 == [169.0]     # last entry of 4th row
-        @test transformers.ckt[1] == "G1"       # string col
+        transformers = net1.transformers
+        @test transformers.i == [112, 113]                     #  1st entry of 1st row
+        @test transformers.fi == [1.0, 1.0]                    # last entry of 1st row
+        @test transformers.r1_2 == [0.032470, 0.039570]        #  1st entry of 2nd row
+        @test transformers.sbase1_2 == [200.0, 200.0]          # last entry of 2nd row (T2)
+        @test isequal(transformers.anstar, [missing, 1.01893]) # last entry of 2nd row (T3)
+        @test transformers.windv1 == [1.0, 1.0]                #  1st entry of 3rd row
+        @test transformers.cx1 == [0.0, 0.0]                   # last entry of 3rd row
+        @test transformers.windv2 == [1.0, 1.0]                #  1st entry of 4th row
+        @test transformers.nomv2 == [169.0, 169.0]             # last entry of 4th row (T2)
+        @test isequal(transformers.cx2, [missing, 0.0])        # last entry of 4th row (T3)
+        @test isequal(transformers.windv3, [missing, 13.8])    #  1st entry of 5th row
+        @test isequal(transformers.cx3, [missing, 0.0])        # last entry of 5th row
+        @test transformers.ckt[1] == "G1"                      # string col
+
+        # v30 testfile has both 2-winding and 3-winding data, so should return all columns
+        @test length(Tables.columnnames(transformers)) == fieldcount(Transformers)
+        @test size(DataFrame(transformers)) == (2, fieldcount(Transformers))
     end
 
     @testset "v29 file" begin
@@ -143,7 +146,7 @@ using Test
         @test branches.fi == [1.0, 1.0, 1.0]
         @test branches.ckt[2] == "6 "
 
-        transformers = net2.two_winding_transformers
+        transformers = net2.transformers
         @test length(transformers.i) == 3
         @test transformers.i == [42, 4774, 222222]            #  1st entry of 1st row
         @test transformers.fi == [1.0, 1.0, 1.0]              # last entry of 1st row
@@ -156,5 +159,9 @@ using Test
         @test transformers.windv2 == [1.0, 1.045, 0.98250]    #  1st entry of 4th row
         @test transformers.nomv2 == [138.0, 240.35, 345.0]    # last entry of 4th row
         @test transformers.ckt == ["K1", "90", "B1"]          # string col
+
+        # v29 testfile has only 2-winding data, so should return only 2-winding columns
+        @test length(Tables.columnnames(transformers)) == 35
+        @test size(DataFrame(transformers)) == (3, 35)
     end
 end
