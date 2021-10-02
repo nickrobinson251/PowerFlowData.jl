@@ -46,6 +46,7 @@ using Test
 
         mime = MIME("text/plain")
         context = :compact => true
+        @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
             Network with 6 data categories:

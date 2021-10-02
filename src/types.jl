@@ -1051,8 +1051,10 @@ end
 ###
 
 function Base.show(io::IO, mime::MIME"text/plain", network::T) where {T <: Network}
+    show(io, mime, T)
+    get(io, :compact, false)::Bool && return nothing
     nfields = fieldcount(T)
-    print(io, "$T with $nfields data categories:\n ")
+    print(io, " with $nfields data categories:\n ")
     show(io, mime, network.caseid)
     io_compact = IOContext(io, :compact => true)
     foreach(2:nfields) do i
