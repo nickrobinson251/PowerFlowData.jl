@@ -60,9 +60,7 @@ using Test
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
 
         @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 3 records"
-        @test startswith(repr(mime, net.buses), "Buses with 3 records:\n i : [111, 112, 113]")
-        @test contains(repr(mime, net.branches), "i => j")  # custom branches "identifier"
-        @test contains(repr(mime, net.transformers), "i => j")
+        @test startswith(repr(mime, net.buses), "Buses with 3 records, 11 columns:\n──")
     end
 
     @testset "v30 file" begin
