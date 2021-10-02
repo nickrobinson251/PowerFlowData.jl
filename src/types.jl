@@ -46,6 +46,7 @@ Tables.columnnames(R::Type{<:Records}) = fieldnames(R)
 Tables.schema(x::R) where {R <: Records} = Tables.Schema(fieldnames(R), fieldtypes(R))
 Tables.rowcount(x::Records) = length(x)  # faster than going via `columnnames`
 Base.length(x::Records) = length(getfield(x, 1)::Vector)
+Base.size(x::R) where {R <: Records} = (length(x), fieldcount(R))
 
 """
     $TYPEDEF
@@ -993,6 +994,9 @@ function Tables.columnnames(x::R) where {R <: Transformers}
         fieldnames(R)
     end
 end
+
+# Again, respect the schema.
+Base.size(x::Transformers) = (length(x), length(Tables.columnnames(x)))
 
 ###
 ### Network

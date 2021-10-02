@@ -22,6 +22,9 @@ using Test
         @test Tables.getcolumn(recs, :x1) == [1, 2, 3]
         @test Tables.getcolumn(recs, 1) == [1, 2, 3]
 
+        @test length(recs) == 3
+        @test size(recs) == (3, 2)
+
         df = DataFrame(recs)
         @test df isa DataFrame
         @test size(df) == (3, 2)
@@ -113,6 +116,8 @@ using Test
         # v30 testfile has both 2-winding and 3-winding data, so should return all columns
         @test length(Tables.columnnames(transformers)) == fieldcount(Transformers)
         @test size(DataFrame(transformers)) == (2, fieldcount(Transformers))
+        @test size(transformers) == (2, fieldcount(Transformers))
+        @test length(transformers) == 2
     end
 
     @testset "v29 file" begin
@@ -162,5 +167,7 @@ using Test
         # v29 testfile has only 2-winding data, so should return only 2-winding columns
         @test length(Tables.columnnames(transformers)) == 35
         @test size(DataFrame(transformers)) == (3, 35)
+        @test size(transformers) == (3, 35)
+        @test length(transformers) == 3
     end
 end
