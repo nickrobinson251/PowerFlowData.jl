@@ -44,6 +44,9 @@ Tables.columns(x::Records) = x
 Tables.getcolumn(x::Records, i::Int) = getfield(x, i)
 Tables.columnnames(R::Type{<:Records}) = fieldnames(R)
 Tables.schema(x::R) where {R <: Records} = Tables.Schema(fieldnames(R), fieldtypes(R))
+Tables.rowcount(x::Records) = length(x)  # faster than going via `columnnames`
+Base.length(x::Records) = length(getfield(x, 1)::Vector)
+Base.size(x::R) where {R <: Records} = (length(x), fieldcount(R))
 
 """
     $TYPEDEF
@@ -992,6 +995,9 @@ function Tables.columnnames(x::R) where {R <: Transformers}
     end
 end
 
+# Again, respect the schema.
+Base.size(x::Transformers) = (length(x), length(Tables.columnnames(x)))
+
 ###
 ### Network
 ###
@@ -1049,34 +1055,40 @@ end
 ###
 
 function Base.show(io::IO, mime::MIME"text/plain", network::T) where {T <: Network}
+    show(io, mime, T)
+    get(io, :compact, false)::Bool && return nothing
     nfields = fieldcount(T)
-    print(io, "$T with $nfields data categories:\n ")
+    print(io, " with $nfields data categories:\n ")
     show(io, mime, network.caseid)
     io_compact = IOContext(io, :compact => true)
     foreach(2:nfields) do i
         print(io, "\n ")
         show(io_compact, mime, getfield(network, i))
     end
+    return nothing
 end
 
 Base.show(io::IO, x::CaseID) = print(io, "CaseID", NamedTuple(x))  # parseable repr
 Base.show(io::IO, ::MIME"text/plain", x::CaseID) = print(io, "CaseID: ", NamedTuple(x))
 
-function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
-    print(io, "$R with $(Tables.rowcount(x)) records")
-    if !get(io, :compact, false)::Bool
-        print(io, ":\n")
-        # show identifiers, e.g. bus numbers, but limit them as there could be very many.
-        _print_identifiers(IOContext(io, :limit => true), x)
-        print(io, "\n")
-        # Always show all columns, as it's helpful and there are never 100s.
-        show(IOContext(io, :limit => false, :compact => true), mime, Tables.schema(x))
-    end
-end
+Base.summary(io::IO, x::R) where {R <: Records} = print(io, "$R with $(length(x)) records")
 
-# default to showing the bus numbers, as all records have this column.
-_print_identifiers(io, x::Records) = print(io, " i : ", x.i)
-# show both ends of branches and transformers
-function _print_identifiers(io, x::Union{Branches, Transformers})
-    print(io, " i => j : ", Pair.(x.i, x.j))
+function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
+    if get(io, :compact, false)::Bool
+        Base.summary(io, x)
+    else
+        printstyled(io, R; bold=true)
+        print(io, " with $(length(x)) records,")
+        print(io, " $(length(Tables.columnnames(x))) columns:\n")
+        pretty_table(
+            io, x;
+            compact_printing=true,
+            crop=:both,
+            header=collect(Symbol, Tables.columnnames(x)),
+            newline_at_end=false,
+            vcrop_mode=:middle,  # show first and last rows
+            vlines=Int[],  # no vertical lines
+        )
+    end
+    return nothing
 end
