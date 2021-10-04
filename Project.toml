@@ -15,6 +15,7 @@ DataFrames = "1"
 DocStringExtensions = "0.8.5"
 InlineStrings = "1"
 Parsers = "2"
+PrettyTables = "1"
 Tables = "1"
 julia = "1"
 
