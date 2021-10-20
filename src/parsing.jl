@@ -150,11 +150,6 @@ function parse_row!(rec::R, row::Int, bytes, pos, len, options) where {R <: Reco
 
         @debug codes(code) row col pos newline=newline(code)
     end
-    # Because we're working around end-of-line comments,
-    # rows with comments won't have hit the newline character yet
-    if !newline(code)
-        pos = next_line(bytes, pos, len)
-    end
     return pos, code
 end
 
@@ -195,12 +190,6 @@ function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options)
                 col += 1
                 @inbounds getfield(rec, col)[row] = missing
             end
-        end
-
-        # Because we're working around end-of-line comments,
-        # rows with comments won't have hit the newline character yet
-        if col in EOL_COLS && !newline(code)
-            pos = next_line(bytes, pos, len)
         end
 
         col += 1
