@@ -211,7 +211,12 @@ end
 function parse_value(T, bytes, pos, len, options)
     res = xparse(T, bytes, pos, len, options)
 
-    invalid(res.code) && @warn codes(res.code) pos
+    code = res.code
+    if invalid(code)
+        if !(newline(code) && invaliddelimiter(code))  # not due to end-of-line comments
+            @warn codes(res.code) pos
+        end
+    end
 
     pos += res.tlen
     code = res.code
