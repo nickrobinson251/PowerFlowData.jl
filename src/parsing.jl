@@ -138,8 +138,8 @@ function next_line(bytes, pos, len)
     return pos
 end
 
-function parse_row!(rec::Records, row::Int, bytes, pos, len, options)
-    ncols = fieldcount(rec)
+function parse_row!(rec::R, row::Int, bytes, pos, len, options) where {R <: Records}
+    ncols = fieldcount(R)
     local code::Parsers.ReturnCode
     for col in 1:ncols
         eltyp = eltype(fieldtype(typeof(rec), col))
