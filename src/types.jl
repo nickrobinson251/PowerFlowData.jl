@@ -34,8 +34,8 @@ Tables.getcolumn(cid::CaseID, nm::Symbol) = getfield(cid, nm)
 abstract type Records end
 
 # Create a instance of a `Records` subtype, with all fields (assumed to be Vector)
-# containing `nrow` elements (initialised to undefined values, as they'll be overwritten).
-(::Type{R})(nrow) where {R <: Records} = R(map(T -> T(undef, nrow), fieldtypes(R))...)
+# expected to be populated with roughly `sizehint` elements
+(::Type{R})(sizehint=0) where {R <: Records} = R(map(T -> sizehint!(T(), sizehint), fieldtypes(R))...)
 
 # Store data in column table so conversion to DataFrame efficient.
 Tables.istable(::Type{<:Records}) = true
