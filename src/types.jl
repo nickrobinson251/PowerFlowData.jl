@@ -999,6 +999,52 @@ end
 Base.size(x::Transformers) = (length(x), length(Tables.columnnames(x)))
 
 ###
+### AreaInterchanges
+###
+
+"""
+    $TYPEDEF
+
+Area interchange is a required net export of power from, or net import of power to, a
+specific area. This does not imply that the power is destined to be transferred to or from
+any other specific area. To specify transfers between specific pairs of areas see
+`InterAreaTransfers`.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct AreaInterchanges <: Records
+    """
+    Area number (1 through the maximum number of areas at the current size level)
+    """
+    i::Vector{Int}
+    """
+    Bus number, or extended bus name enclosed in single quotes, of the area slack bus for
+    area interchange control. The bus must be a generator (type two) bus in the specified
+    area. Any area containing a system swing bus (type three) must have either that swing
+    bus or a bus number of zero specified for its area slack bus number.
+    `isw` = 0 by default.
+    """
+    isw::Vector{Int}
+    """
+    Desired net interchange leaving the area (export); entered in MW.
+    `pdes` = 0.0 by default.
+    """
+    pdes::Vector{Float64}
+    """
+    Interchange tolerance bandwidth; entered in MW.
+    `ptol` = 10.0 by default.
+    """
+    ptol::Vector{Float64}
+    """
+    Alphanumeric identifier assigned to area I.
+    The name may contain up to twelve characters.
+    `arname` is set to twelve blanks by default.
+    """
+    arname::Vector{InlineString15}
+end
+
+###
 ### Network
 ###
 
@@ -1019,6 +1065,7 @@ Currently supported are:
 1. [`Generators`](@ref)
 1. [`Branches`](@ref)
 1. [`Transformers`](@ref)
+1. [`AreaInterchanges`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
@@ -1048,6 +1095,8 @@ struct Network
     branches::Branches
     "Transformer records."
     transformers::Transformers
+    "Area Interchange records."
+    interchanges::AreaInterchanges
 end
 
 ###
