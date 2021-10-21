@@ -127,6 +127,13 @@ using Test
         @test size(DataFrame(transformers)) == (2, fieldcount(Transformers))
         @test size(transformers) == (2, fieldcount(Transformers))
         @test length(transformers) == 2
+
+        interchanges = net1.interchanges
+        @test interchanges.i == [113]
+        @test interchanges.isw == [456]
+        @test interchanges.pdes == [2121.7211]
+        @test interchanges.ptol == [6.0]
+        @test interchanges.arname == ["ABC     "]
     end
 
     @testset "v29 file" begin
