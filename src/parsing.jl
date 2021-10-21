@@ -23,37 +23,31 @@ function parse_network(source)
     bytes, pos, len = getbytes(source)
 
     caseid, pos = parse_caseid(bytes, pos, len, OPTIONS)
-    @debug 1 "parsed CaseID: pos = $pos"
+    @debug 1 "Parsed CaseID: pos = $pos"
 
     # Skip the 2 lines of comments
     # TODO: confirm it is always only and exactly 2 lines of comments
     pos = next_line(bytes, pos, len)
     pos = next_line(bytes, pos, len)
-    @debug 1 "parsed comments: pos = $pos"
+    @debug 1 "Parsed comments: pos = $pos"
 
-    nrows = count_nrow(bytes, pos, len, OPTIONS)
-    buses, pos = parse_records!(Buses(nrows), bytes, pos, len, OPTIONS)
-    @debug 1 "parsed Buses: nrows = $nrows, pos = $pos"
+    buses, pos = parse_records!(Buses(len÷1000), bytes, pos, len, OPTIONS)
+    nbuses = length(buses)
+    @debug 1 "Parsed Buses: nrows = $nbuses, pos = $pos"
 
-    nrows = count_nrow(bytes, pos, len, OPTIONS)
-    loads, pos = parse_records!(Loads(nrows), bytes, pos, len, OPTIONS)
-    @debug 1 "parsed Loads: nrows = $nrows, pos = $pos"
+    loads, pos = parse_records!(Loads(nbuses), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed Loads: nrows = $(length(loads)), pos = $pos"
 
-    nrows = count_nrow(bytes, pos, len, OPTIONS)
-    gens, pos = parse_records!(Generators(nrows), bytes, pos, len, OPTIONS)
-    @debug 1 "parsed Generators: nrows = $nrows, pos = $pos"
+    gens, pos = parse_records!(Generators(nbuses÷10), bytes, pos, len, OPTIONS)
+    ngens = length(gens)
+    @debug 1 "Parsed Generators: nrows = $ngens, pos = $pos"
 
-    nrows = count_nrow(bytes, pos, len, OPTIONS)
-    branches, pos = parse_records!(Branches(nrows), bytes, pos, len, OPTIONS)
-    @debug 1 "parsed Branches: nrows = $nrows, pos = $pos"
+    branches, pos = parse_records!(Branches(nbuses), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed Branches: nrows = $(length(branches)), pos = $pos"
 
-    # 2-winding Transformers data is 4 lines each... so this will be correct when all
-    # transformers as 2-winding, and become incorrect once there are multiple 3-winding.
-    # TODO: ditch counting of rows and use `push!`
-    # https://github.com/nickrobinson251/PowerFlowData.jl/issues/5
-    nrows = count_nrow(bytes, pos, len, OPTIONS) ÷ 4
-    transformers, pos = parse_records!(Transformers(nrows), bytes, pos, len, OPTIONS)
-    @debug 1 "parsed Transformers: nrows = $nrows, pos = $pos"
+    transformers, pos = parse_records!(Transformers(ngens*2), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed Transformers: nrows = $(length(transformers)), pos = $pos"
+
     return Network(caseid, buses, loads, gens, branches, transformers)
 end
 
@@ -82,39 +76,12 @@ function parse_caseid(bytes, pos, len, options)
 end
 
 function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {R <: Records}
-    nrows = length(getfield(rec, 1))
-    nrows == 0 && return rec, pos
-    for row in 1:nrows
-        _, pos = parse_row!(rec, row, bytes, pos, len, options)
+    # Records terminated by specifying a bus number of zero.
+    while !(eof(bytes, pos, len) || peekbyte(bytes, pos) == UInt8('0'))
+        _, pos = parse_row!(rec, bytes, pos, len, options)
     end
-
-    # Data input is terminated by specifying a bus number of zero.
-    if !(eof(bytes, pos, len) || peekbyte(bytes, pos) == UInt8('0'))
-        @warn "Not at end of $(typeof(rec)) records"
-    end
-    pos = next_line(bytes, pos, len)
+    pos = next_line(bytes, pos, len)  # Move past a "0 bus" line.
     return rec, pos
-end
-
-function count_nrow(buf, pos, len, options)
-    nlines = 0
-    if eof(buf, pos, len) || peekbyte(buf, pos) == UInt8('0')
-        return nlines
-    end
-    while true
-        res = xparse(String, buf, pos, len, options)
-        pos += res.tlen
-        if newline(res.code) || eof(res.code)
-            nlines += 1
-            if eof(buf, pos, len) || (
-                !eof(buf, pos, len) && peekbyte(buf, pos) == UInt8('0') &&
-                !eof(buf, pos+1, len) && peekbyte(buf, pos+1) == UInt8(' ')
-            )
-                break
-            end
-        end
-    end
-    return nlines
 end
 
 # Taken from `Parsers.checkcmtemptylines`
@@ -148,18 +115,18 @@ function parse_value(::Type{T}, bytes, pos, len, options) where {T}
     return res.val, pos, res.code
 end
 
-function parse_value!(rec, col::Int, row::Int, ::Type{T}, bytes, pos, len, options) where {T}
+function parse_value!(rec, col::Int, ::Type{T}, bytes, pos, len, options) where {T}
     val, pos, code = parse_value(nonmissingtype(T), bytes, pos, len, options)
-    @inbounds (getfield(rec, col)::Vector{T})[row] = val
+    push!(getfield(rec, col)::Vector{T}, val)
     return rec, pos, code
 end
 
-@generated function parse_row!(rec::R, row::Int, bytes, pos, len, options) where {R <: Records}
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Records}
     block = Expr(:block)
     for col in 1:fieldcount(R)
         T = eltype(fieldtype(R, col))
         push!(block.args, quote
-            rec, pos, code = parse_value!(rec, $col, row, $T, bytes, pos, len, options)
+            rec, pos, code = parse_value!(rec, $col, $T, bytes, pos, len, options)
         end)
     end
     # @show block
@@ -173,7 +140,7 @@ end
 function _setmissing(a::Int, b::Int)
     exprs = Expr[]
     for col in a:b
-        push!(exprs, :(@inbounds getfield(rec, $col)[row] = missing))
+        push!(exprs, :(push!(getfield(rec, $col), missing)))
     end
     return exprs
 end
@@ -182,7 +149,7 @@ function _parse_values(a::Int, b::Int)
     exprs = Expr[]
     for col in a:b
         T = eltype(fieldtype(Transformers, col))
-        push!(exprs, :((rec, pos, code) = parse_value!(rec, $col, row, $T, bytes, pos, len, options)))
+        push!(exprs, :((rec, pos, code) = parse_value!(rec, $col, $T, bytes, pos, len, options)))
     end
     return exprs
 end
@@ -210,7 +177,7 @@ end
 # - Line 5 only exists for T3 data
 # We determine data is T2 if there is a newline after 3 entries of line 2, else it's T3.
 # This means T2 data with a comment after the last entry on line 2 will fool us.
-@generated function parse_row!(rec::R, row::Int, bytes, pos, len, options) where {R <: Transformers}
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Transformers}
     block = Expr(:block)
     append!(block.args, _parse_values(1, EOL_COLS[1]+T2_COLS[2]))
     push!(block.args, :(newline(code) ? $(_parse_t2()) : $(_parse_t3())))
