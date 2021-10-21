@@ -9,7 +9,7 @@ using Tables
 
 export parse_network
 export Network
-export CaseID, Buses, Loads, Generators, Branches, Transformers
+export CaseID, Buses, Loads, Generators, Branches, Transformers, AreaInterchanges
 
 include("debug.jl")
 include("types.jl")

@@ -48,7 +48,10 @@ function parse_network(source)
     transformers, pos = parse_records!(Transformers(ngens*2), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Transformers: nrows = $(length(transformers)), pos = $pos"
 
-    return Network(caseid, buses, loads, gens, branches, transformers)
+    interchanges, pos = parse_records!(AreaInterchanges(), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed AreaInterchanges: nrows = $(length(interchanges)), pos = $pos"
+
+    return Network(caseid, buses, loads, gens, branches, transformers, interchanges)
 end
 
 function parse_caseid(bytes, pos, len, options)
