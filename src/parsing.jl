@@ -31,7 +31,7 @@ function parse_network(source)
     pos = next_line(bytes, pos, len)
     @debug 1 "Parsed comments: pos = $pos"
 
-    buses, pos = parse_records!(Buses(), bytes, pos, len, OPTIONS)
+    buses, pos = parse_records!(Buses(len÷1000), bytes, pos, len, OPTIONS)
     nbuses = length(buses)
     @debug 1 "Parsed Buses: nrows = $nbuses, pos = $pos"
 
