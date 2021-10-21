@@ -45,7 +45,7 @@ function parse_network(source)
     branches, pos = parse_records!(Branches(nbuses), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Branches: nrows = $(length(branches)), pos = $pos"
 
-    transformers, pos = parse_records!(Transformers(ngens), bytes, pos, len, OPTIONS)
+    transformers, pos = parse_records!(Transformers(ngens*2), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Transformers: nrows = $(length(transformers)), pos = $pos"
 
     return Network(caseid, buses, loads, gens, branches, transformers)
