@@ -68,7 +68,8 @@ function parse_caseid(bytes, pos, len, options)
     # TODO: avoid needing to extract `sbase` value from String?
     sbase = Parsers.tryparse(Float64, bytes, options, pos, len)
     if sbase === nothing
-        str, pos, code = parse_value(String, bytes, pos, len, options)
+        val, pos, code = parse_value(String, bytes, pos, len, options)
+        str = Parsers.getstring(bytes, val, options.e)
         @debug codes(code) pos newline=newline(code)
         sbase = parse(Float64, first(split(str, '/')))
     end
@@ -86,7 +87,7 @@ function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {
     nrows = length(getfield(rec, 1))
     nrows == 0 && return rec, pos
     for row in 1:nrows
-        pos, code = parse_row!(rec, row, bytes, pos, len, options)
+        _, pos = parse_row!(rec, row, bytes, pos, len, options)
     end
 
     # Data input is terminated by specifying a bus number of zero.
@@ -138,82 +139,85 @@ function next_line(bytes, pos, len)
     return pos
 end
 
-function parse_row!(rec::R, row::Int, bytes, pos, len, options) where {R <: Records}
-    ncols = fieldcount(R)
-    local code::Parsers.ReturnCode
-    for col in 1:ncols
-        eltyp = eltype(fieldtype(typeof(rec), col))
-        # TODO: come up with a way to avoid type instability/dynamic dispatch
-        # in this call to parse_value (this will effect performance a lot!)
-        val, pos, code = parse_value(eltyp, bytes, pos, len, options)
-        @inbounds getfield(rec, col)[row] = val
-
-        @debug codes(code) row col pos newline=newline(code)
-    end
-    return pos, code
-end
-
-
-###
-### transformers
-###
-
-# To hold "three-winding" data we need `sum((14, 11, 16, 16, 16)) == 73` columns, and
-# column 14+3=17 and column 14+11+16+2=43 are "special" in that they may or may not be at
-# the end of a line.
-function parse_row!(rec::Transformers, row::Int, bytes, pos, len, options)
-    ncols = fieldcount(Transformers)
-    @assert ncols == last(EOL_COLS)
-
-    local code::Parsers.ReturnCode
-    col = 1
-    is_t2 = false
-    while col ≤ ncols
-        eltyp = nonmissingtype(eltype(fieldtype(typeof(rec), col)))
-        val, pos, code = parse_value(eltyp, bytes, pos, len, options)
-        @inbounds getfield(rec, col)[row] = val
-
-        @debug codes(code) row col pos newline=newline(code)
-
-        # TODO: handle 2-winding data with end-of-line comments on row 2.
-        if col == (EOL_COLS[1] + T2_COLS[2]) && newline(code)
-            is_t2 = true  # it's two-winding data
-            while col < EOL_COLS[2]  # the rest of line 2 is missing
-                col += 1
-                @inbounds getfield(rec, col)[row] = missing
-            end
-        end
-
-        if is_t2 && col == EOL_COLS[3] + T2_COLS[4]
-            # TODO: handle end-of-line comments on row 4 of 2-winding data.
-            while col < EOL_COLS[5]  # the rest of line 4 and all of line 5 is missing
-                col += 1
-                @inbounds getfield(rec, col)[row] = missing
-            end
-        end
-
-        col += 1
-    end
-    return pos, code
-end
-
-function parse_value(T, bytes, pos, len, options)
+function parse_value(::Type{T}, bytes, pos, len, options) where {T}
     res = xparse(T, bytes, pos, len, options)
-
     code = res.code
     if invalid(code)
         if !(newline(code) && invaliddelimiter(code))  # not due to end-of-line comments
             @warn codes(res.code) pos
         end
     end
-
     pos += res.tlen
-    code = res.code
+    return res.val, pos, res.code
+end
 
-    val = if T === String
-        Parsers.getstring(bytes, res.val, options.e)
-    else
-        res.val
+function parse_value!(rec, col::Int, row::Int, ::Type{T}, bytes, pos, len, options) where {T}
+    val, pos, code = parse_value(nonmissingtype(T), bytes, pos, len, options)
+    @inbounds (getfield(rec, col)::Vector{T})[row] = val
+    return rec, pos, code
+end
+
+@generated function parse_row!(rec::R, row::Int, bytes, pos, len, options) where {R <: Records}
+    block = Expr(:block)
+    for col in 1:fieldcount(R)
+        T = eltype(fieldtype(R, col))
+        push!(block.args, quote
+            rec, pos, code = parse_value!(rec, $col, row, $T, bytes, pos, len, options)
+        end)
     end
-    return val, pos, code
+    # @show block
+    return block
+end
+
+###
+### transformers
+###
+
+function _setmissing(a::Int, b::Int)
+    exprs = Expr[]
+    for col in a:b
+        push!(exprs, :(@inbounds getfield(rec, $col)[row] = missing))
+    end
+    return exprs
+end
+
+function _parse_values(a::Int, b::Int)
+    exprs = Expr[]
+    for col in a:b
+        T = eltype(fieldtype(Transformers, col))
+        push!(exprs, :((rec, pos, code) = parse_value!(rec, $col, row, $T, bytes, pos, len, options)))
+    end
+    return exprs
+end
+
+function _parse_t2()
+    block = Expr(:block)
+    append!(block.args, _setmissing(EOL_COLS[1]+1+T2_COLS[2], EOL_COLS[2]))
+    append!(block.args, _parse_values(EOL_COLS[2]+1, EOL_COLS[3]+T2_COLS[4]))
+    append!(block.args, _setmissing(EOL_COLS[3]+1+T2_COLS[4], EOL_COLS[5]))
+    return block
+end
+
+function _parse_t3()
+    block = Expr(:block)
+    append!(block.args, _parse_values(EOL_COLS[1]+1+T2_COLS[2], EOL_COLS[5]))
+    return block
+end
+
+# 2-winding transformers (T2) have a subset of the data for 3-winding transformers (T3).
+# T2 has data over 4 lines, T3 has data for 5 lines:
+# - Line 1 is the same for both
+# - Line 2 has only 3 entries for T2 data, and more for T3
+# - Line 3 is the same for both
+# - Line 4 has only 2 entries for T2 data, and more for T3 (similar to line 2)
+# - Line 5 only exists for T3 data
+# We determine data is T2 if there is a newline after 3 entries of line 2, else it's T3.
+# This means T2 data with a comment after the last entry on line 2 will fool us.
+@generated function parse_row!(rec::R, row::Int, bytes, pos, len, options) where {R <: Transformers}
+    block = Expr(:block)
+    append!(block.args, _parse_values(1, EOL_COLS[1]+T2_COLS[2]))
+    push!(block.args, :(newline(code) ? $(_parse_t2()) : $(_parse_t3())))
+    push!(block.args, :(return rec, pos))
+    # @show block
+    return block
 end
