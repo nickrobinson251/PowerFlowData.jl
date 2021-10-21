@@ -37,7 +37,7 @@ using Test
         @test df isa DataFrame
         @test size(df) == (3, 2)
 
-        for T in (Buses, Loads, Generators, Branches)
+        for T in (Buses, Loads, Generators, Branches, Transformers)
             @test T <: PowerFlowData.Records
             @test Tables.istable(T)
         end
