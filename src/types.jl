@@ -35,7 +35,7 @@ abstract type Records end
 
 # Create a instance of a `Records` subtype, with all fields (assumed to be Vector)
 # expected to be populated with roughly `sizehint` elements
-(::Type{R})(sizehint=0) where {R <: Records} = R(map(T -> sizehint!(T(), sizehint), fieldtypes(R))...)
+(::Type{R})(sizehint=0) where {R <: Records} = (R(map(T -> sizehint!(T(), sizehint), fieldtypes(R))...))::R
 
 # Store data in column table so conversion to DataFrame efficient.
 Tables.istable(::Type{<:Records}) = true
