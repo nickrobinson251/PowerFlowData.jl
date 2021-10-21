@@ -23,43 +23,43 @@ function parse_network(source)
     bytes, pos, len = getbytes(source)
 
     caseid, pos = parse_caseid(bytes, pos, len, OPTIONS)
-    @debug "caseid" pos
+    @debug 1 "parsed CaseID: pos = $pos"
 
     # Skip the 2 lines of comments
     # TODO: confirm it is always only and exactly 2 lines of comments
     pos = next_line(bytes, pos, len)
     pos = next_line(bytes, pos, len)
-    @debug "comments" pos
+    @debug 1 "parsed comments: pos = $pos"
 
     nrows = count_nrow(bytes, pos, len, OPTIONS)
-    @debug "buses" nrows pos
     buses, pos = parse_records!(Buses(nrows), bytes, pos, len, OPTIONS)
+    @debug 1 "parsed Buses: nrows = $nrows, pos = $pos"
 
     nrows = count_nrow(bytes, pos, len, OPTIONS)
-    @debug "loads" nrows pos
     loads, pos = parse_records!(Loads(nrows), bytes, pos, len, OPTIONS)
+    @debug 1 "parsed Loads: nrows = $nrows, pos = $pos"
 
     nrows = count_nrow(bytes, pos, len, OPTIONS)
-    @debug "gens" nrows pos
     gens, pos = parse_records!(Generators(nrows), bytes, pos, len, OPTIONS)
+    @debug 1 "parsed Generators: nrows = $nrows, pos = $pos"
 
     nrows = count_nrow(bytes, pos, len, OPTIONS)
-    @debug "branches" nrows pos
     branches, pos = parse_records!(Branches(nrows), bytes, pos, len, OPTIONS)
+    @debug 1 "parsed Branches: nrows = $nrows, pos = $pos"
 
     # 2-winding Transformers data is 4 lines each... so this will be correct when all
     # transformers as 2-winding, and become incorrect once there are multiple 3-winding.
     # TODO: ditch counting of rows and use `push!`
     # https://github.com/nickrobinson251/PowerFlowData.jl/issues/5
     nrows = count_nrow(bytes, pos, len, OPTIONS) ÷ 4
-    @debug "2-winding transformers" nrows pos
     transformers, pos = parse_records!(Transformers(nrows), bytes, pos, len, OPTIONS)
+    @debug 1 "parsed Transformers: nrows = $nrows, pos = $pos"
     return Network(caseid, buses, loads, gens, branches, transformers)
 end
 
 function parse_caseid(bytes, pos, len, options)
     ic, pos, code = parse_value(Int, bytes, pos, len, options)
-    @debug codes(code) pos newline=newline(code)
+    @debug 2 "$(codes(code)) pos = $pos, newline = $(newline(code))"
 
     # Support files that have first row like:
     # 0,   100.00          / PSS/E-30.3    WED, SEP 15 2021  21:04
@@ -70,7 +70,7 @@ function parse_caseid(bytes, pos, len, options)
     if sbase === nothing
         val, pos, code = parse_value(String, bytes, pos, len, options)
         str = Parsers.getstring(bytes, val, options.e)
-        @debug codes(code) pos newline=newline(code)
+        @debug 2 "$(codes(code)) pos = $pos, newline = $(newline(code))"
         sbase = parse(Float64, first(split(str, '/')))
     end
 
@@ -78,8 +78,6 @@ function parse_caseid(bytes, pos, len, options)
     if !newline(code)
         pos = next_line(bytes, pos, len)
     end
-    @debug codes(code) pos newline=newline(code)
-
     return CaseID(ic, sbase), pos
 end
 
@@ -91,7 +89,6 @@ function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {
     end
 
     # Data input is terminated by specifying a bus number of zero.
-    # @assert peekbyte(bytes, pos) == UInt8('0')
     if !(eof(bytes, pos, len) || peekbyte(bytes, pos) == UInt8('0'))
         @warn "Not at end of $(typeof(rec)) records"
     end
