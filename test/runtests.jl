@@ -1,9 +1,17 @@
 using DataFrames
+using InteractiveUtils: subtypes
 using PowerFlowData
 using Tables
 using Test
 
 @testset "PowerFlowData.jl" begin
+
+    @testset "Infers" begin
+        for T in subtypes(PowerFlowData.Records)
+            @inferred T()
+            @inferred T(1)
+        end
+    end
 
     @testset "Tables interface" begin
         struct TestRecs <: PowerFlowData.Records
