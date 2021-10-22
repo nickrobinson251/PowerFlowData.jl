@@ -243,7 +243,7 @@ struct Generators <: Records
     Percent of the total Mvar required to hold the voltage at the bus controlled by this bus "I" that are to be contributed by the generation at bus "I";
     RMPCT must be positive.
     RMPCT is needed if IREG specifies a valid remote bus and there is more than one local or remote voltage controlling device
-    (plant, switched shunt, FACTS device shunt element, or VSC dc line converter) controlling the voltage at bus IREG to a setpoint.
+    (plant, switched shunt, FACTS device shunt element, or VSC DC line converter) controlling the voltage at bus IREG to a setpoint.
     RMPCT is needed also if bus "I" itself is being controlled locally or remotely by one or more other setpoint mode voltage controlling devices.
     RMPCT = 100.0 by default.
     """
@@ -1045,6 +1045,280 @@ struct AreaInterchanges <: Records
 end
 
 ###
+### Two-terminal DC Lines
+
+"""
+    $TYPEDEF
+
+The two-terminal DC transmission line model is used to simulate either a point-to-point
+system with rectifier and inverter separated by a bipolar or mono-polar transmission system
+or a Back-to-Back system where the rectifier and inverter are physically located at the same
+site and separated only by a short bus-bar.
+
+The data requirements fall into three groups:
+* Control parameters and set-points
+* Converter transformers
+* The DC line characteristics
+
+The steady-state model comprising this data enables not only power flow analysis but also
+establishes the initial steady-state for dynamic analysis.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct TwoTerminalDCLines <: Records
+    # Data for each TwoTerminalDCLine is specified on three consecutive lines of the file.
+    # First line: defines various line quantities and control parameters
+    """
+    The DC line number.
+    """
+    i::Vector{Int}
+    """
+    Control mode:
+    * 0 for blocked,
+    * 1 for power,
+    * 2 for current.
+    `mdc` = 0 by default.
+    """
+    mdc::Vector{Int8}  # 0, 1, or 2
+    """
+    The DC line resistance; entered in ohms.
+    No default.
+    """
+    rdc::Vector{Float64}
+    """
+    Current (amps) or power (MW) demand.
+    When `mdc` is 1, a positive value of `setvl` specifies desired power at the rectifier
+    and a negative value specifies desired inverter power.
+    No default.
+    """
+    setvl::Vector{Float64}
+    """
+    Scheduled compounded DC voltage; entered in kV.
+    No default.
+    """
+    vschd::Vector{Float64}
+    """
+    Mode switch DC voltage; entered in kV.
+    When the inverter DC voltage falls below this value and the line is in power control mode
+    (i.e. `mdc` = 1), the line switches to current control mode with a desired current
+    corresponding to the desired power at scheduled DC voltage.
+    `vcmod` = 0.0 by default.
+    """
+    vcmod::Vector{Float64}
+    """
+    Compounding resistance; entered in ohms.
+    Gamma and/or TAPI is used to attempt to hold the compounded voltage (``vdci + dccur ∗ rcomp``) at `vschd`.
+    * To control the inverter end DC voltage VDCI, set `rcomp` to zero;
+    * to control the rectifier end DC voltage VDCR, set `rcomp` to the DC line resistance, `rdc`;
+    * otherwise, set `rcomp` to the appropriate fraction of `rdc`.
+    `rcomp` = 0.0 by default.
+    """
+    rcomp::Vector{Float64}
+    """
+    Margin entered in per unit of desired DC power or current.
+    This is the fraction by which the order is reduced when alpha is at its minimum (`alfmn`)
+    and the inverter is controlling the line current.
+    `delti` = 0.0 by default.
+    """
+    delti::Vector{Float64}
+    """
+    Metered end code of either "R" (for rectifier) or "I" (for inverter).
+    `meter` = "I" by default.
+    """
+    meter::Vector{InlineString1}  # I or R
+    """
+    Minimum compounded DC voltage; entered in kV.
+    Only used in constant gamma operation (i.e. when `gammx` = `gammn`) when TAPI is held constant
+    and an AC transformer tap is adjusted to control DC voltage
+    (i.e. when `ifi`, `iti`, and `idi` specify a two-winding transformer).
+    `dcvmin` = 0.0 by default.
+    """
+    dcvmin::Vector{Float64}
+    """
+    Iteration limit for capacitor commutated two-terminal DC line Newton solution procedure.
+    `cccitmx` = 20 by default.
+    """
+    cccitmx::Vector{Int}
+    """
+    Acceleration factor for capacitor commutated two-terminal DC line Newton solution procedure.
+    `cccacc` = 1.0 by default.
+    """
+    cccacc::Vector{Float64}
+    # Second line: defines rectifier end data quantities and control parameters
+    """
+    Rectifier converter bus number, or extended bus name enclosed in single quotes.
+    No default.
+    """
+    ipr::Vector{Int}
+    """
+    Number of bridges in series (rectifier).
+    No default.
+    """
+    nbr::Vector{Int}
+    """
+    Nominal maximum rectifier firing angle; entered in degrees.
+    No default.
+    """
+    alfmx::Vector{Float64}
+    """
+    Minimum steady-state rectifier firing angle; entered in degrees.
+    No default.
+    """
+    alfmn::Vector{Float64}
+    """
+    Rectifier commutating transformer resistance per bridge; entered in ohms.
+    No default allowed.
+    """
+    rcr::Vector{Float64}
+    """
+    Rectifier commutating transformer reactance per bridge; entered in ohms.
+    No default allowed.
+    """
+    xcr::Vector{Float64}
+    """
+    Rectifier primary base AC voltage; entered in kV.
+    No default.
+    """
+    ebasr::Vector{Float64}
+    """
+    Rectifier transformer ratio.
+    `trr` = 1.0 by default.
+    """
+    trr::Vector{Float64}
+    """
+    Rectifier tap setting.
+    `tapr` = 1.0 by default.
+    """
+    tapr::Vector{Float64}
+    """
+    Maximum rectifier tap setting.
+    `tmxr` = 1.5 by default.
+    """
+    tmxr::Vector{Float64}
+    """
+    Minimum rectifier tap setting.
+    `tmnr` = 0.51 by default.
+    """
+    tmnr::Vector{Float64}
+    """
+    Rectifier tap step; must be positive.
+    `stpr` = 0.00625 by default.
+    """
+    stpr::Vector{Float64}
+    """
+    Rectifier firing angle measuring bus number, or extended bus name enclosed in single quotes.
+    The firing angle and angle limits used inside the DC model are adjusted by the difference
+    between the phase angles at this bus and the AC/DC interface (i.e. the converter bus, `ipr`).
+    `icr` = 0 by default.
+    """
+    icr::Vector{Int}
+    """
+    Winding one side "from bus" number, or extended bus name enclosed in single quotes,
+    of a two-winding transformer.
+    `ifr` = 0 by default.
+    """
+    ifr::Vector{Int}
+    """
+    Winding two side "to bus" number, or extended bus name enclosed in single quotes,
+    of a two-winding transformer.
+    `itr` = 0 by default.
+    """
+    itr::Vector{Int}
+    """
+    Circuit identifier; the branch described by `ifr`, `itr`, and `idr` must have been entered
+    as a two-winding transformer; an AC transformer may control at most only one DC converter.
+    `idr` = '1' by default.
+
+    If no branch is specified, `tapr` is adjusted to keep alpha within limits;
+    otherwise, `tapr` is held fixed and this transformer’s tap ratio is adjusted.
+    The adjustment logic assumes that the rectifier converter bus is on the winding two side
+    of the transformer. The limits `tmxr` and `tmnr` specified here are used; except for the
+    transformer control mode flag (`cod` of `Transformers`), the AC tap adjustment data is ignored.
+    """
+    idr::Vector{InlineString3}
+    """
+    Commutating capacitor reactance magnitude per bridge; entered in ohms.
+    `xcapr` = 0.0 by default.
+    """
+    xcapr::Vector{Float64}
+    # Third line: contains the inverter quantities corresponding to the rectifier quantities
+    # specified on the second line above.  The significant difference is that the control angle
+    # `ALFA` for the rectifier is replaced by the control angle `GAMMA` for the inverter.
+    """
+    Inverter converter bus number, or extended bus name enclosed in single quotes.
+    """
+    ipi::Vector{Int}
+    """
+    Number of bridges in series (inverter).
+    """
+    nbi::Vector{Int}
+    """
+    Nominal maximum inverter firing angle; entered in degrees.
+    """
+    gammx::Vector{Float64}
+    """
+    Minimum steady-state inverter firing angle; entered in degrees.
+    """
+    gammn::Vector{Float64}
+    """
+    Inverter commutating transformer resistance per bridge; entered in ohms.
+    """
+    rci::Vector{Float64}
+    """
+    Inverter commutating transformer reactance per bridge; entered in ohms.
+    """
+    xci::Vector{Float64}
+    """
+    Inverter primary base AC voltage; entered in kV.
+    """
+    ebasi::Vector{Float64}
+    """
+    Inverter transformer ratio.
+    """
+    tri::Vector{Float64}
+    """
+    Inverter tap setting.
+    """
+    tapi::Vector{Float64}
+    """
+    Maximum inverter tap setting.
+    """
+    tmxi::Vector{Float64}
+    """
+    Minimum inverter tap setting.
+    """
+    tmni::Vector{Float64}
+    """
+    Inverter tap step; must be positive.
+    """
+    stpi::Vector{Float64}
+    """
+    Inverter firing angle measuring bus number, or extended bus name enclosed in single quotes.
+    """
+    ici::Vector{Int}
+    """
+    Winding one side "from bus" number, or extended bus name enclosed in single quotes,
+    of a two-winding transformer.
+    """
+    ifi::Vector{Int}
+    """
+    Winding two side "to bus" number, or extended bus name enclosed in single quotes,
+    of a two-winding transformer.
+    """
+    iti::Vector{Int}
+    """
+    Circuit identifier; the branch described by `ifr`, `itr`, and `idr` must have been entered
+    as a two-winding transformer; an AC transformer may control at most only one DC converter.
+    """
+    idi::Vector{InlineString3}
+    """
+    Commutating capacitor reactance magnitude per bridge; entered in ohms.
+    """
+    xcapi::Vector{Float64}
+end
+
+###
 ### Network
 ###
 
@@ -1066,6 +1340,7 @@ Currently supported are:
 1. [`Branches`](@ref)
 1. [`Transformers`](@ref)
 1. [`AreaInterchanges`](@ref)
+1. [`TwoTerminalDCLines`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
@@ -1097,6 +1372,8 @@ struct Network
     transformers::Transformers
     "Area Interchange records."
     interchanges::AreaInterchanges
+    "Two-terminal DC Line records."
+    two_terminal_dc::TwoTerminalDCLines
 end
 
 ###
