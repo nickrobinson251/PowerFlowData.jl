@@ -37,7 +37,7 @@ using Test
         @test df isa DataFrame
         @test size(df) == (3, 2)
 
-        for T in (Buses, Loads, Generators, Branches, Transformers)
+        for T in (Buses, Loads, Generators, Branches, Transformers, AreaInterchanges)
             @test T <: PowerFlowData.Records
             @test Tables.istable(T)
         end
@@ -60,13 +60,14 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 6 data categories:
+            Network with 7 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
              $(sprint(show, mime, net.generators; context))
              $(sprint(show, mime, net.branches; context))
              $(sprint(show, mime, net.transformers; context))
+             $(sprint(show, mime, net.interchanges; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -126,6 +127,13 @@ using Test
         @test size(DataFrame(transformers)) == (2, fieldcount(Transformers))
         @test size(transformers) == (2, fieldcount(Transformers))
         @test length(transformers) == 2
+
+        interchanges = net1.interchanges
+        @test interchanges.i == [113]
+        @test interchanges.isw == [456]
+        @test interchanges.pdes == [2121.7211]
+        @test interchanges.ptol == [6.0]
+        @test interchanges.arname == ["ABC     "]
     end
 
     @testset "v29 file" begin
@@ -177,5 +185,12 @@ using Test
         @test size(DataFrame(transformers)) == (3, 35)
         @test size(transformers) == (3, 35)
         @test length(transformers) == 3
+
+        interchanges = net2.interchanges
+        @test interchanges.i == [615, 762]
+        @test interchanges.isw == [615001, 1234]
+        @test interchanges.pdes == [32.677, -224.384]
+        @test interchanges.ptol == [5.0, 5.0]
+        @test interchanges.arname == ["RE          ", "OTP         "]
     end
 end
