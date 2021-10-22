@@ -60,7 +60,7 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 7 data categories:
+            Network with 8 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -68,6 +68,7 @@ using Test
              $(sprint(show, mime, net.branches; context))
              $(sprint(show, mime, net.transformers; context))
              $(sprint(show, mime, net.interchanges; context))
+             $(sprint(show, mime, net.two_terminal_dc; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -134,6 +135,14 @@ using Test
         @test interchanges.pdes == [2121.7211]
         @test interchanges.ptol == [6.0]
         @test interchanges.arname == ["ABC     "]
+
+        two_terminal_dc = net1.two_terminal_dc
+        @test two_terminal_dc.i == [11]           #  1st entry of 1st row
+        @test two_terminal_dc.cccacc == [1.0]     # last entry of 1st row
+        @test two_terminal_dc.ipr == [112]        #  1st entry of 2nd row
+        @test two_terminal_dc.xcapr == [0.0]      # last entry of 2nd row
+        @test two_terminal_dc.ipi == [2222]       #  1st entry of 3nd row
+        @test two_terminal_dc.xcapi == [2.0]      # last entry of 3rd row
     end
 
     @testset "v29 file" begin
