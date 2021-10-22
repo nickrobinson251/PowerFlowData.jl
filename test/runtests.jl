@@ -185,5 +185,12 @@ using Test
         @test size(DataFrame(transformers)) == (3, 35)
         @test size(transformers) == (3, 35)
         @test length(transformers) == 3
+
+        interchanges = net2.interchanges
+        @test interchanges.i == [615, 762]
+        @test interchanges.isw == [615001, 1234]
+        @test interchanges.pdes == [32.677, -224.384]
+        @test interchanges.ptol == [5.0, 5.0]
+        @test interchanges.arname == ["RE          ", "OTP         "]
     end
 end
