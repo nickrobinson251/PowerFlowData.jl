@@ -81,7 +81,7 @@ struct Buses <: Records
     It has no power or reactive limits and regulates voltage at a fixed reference angle.
     4 - disconnected or isolated bus.
     """
-    ide::Vector{Int}
+    ide::Vector{Int8}  # 1, 2, 3 or 4
     """
     Active component of shunt admittance to ground; entered in MW at one per unit voltage.
     GL should not include any resistive admittance load, which is entered as part of load data.
@@ -425,7 +425,7 @@ struct Transformers <: Records
     * 2 for winding voltage in kV.
     `cw` = 1 by default.
     """
-    cw::Vector{Int} # 1 or 2
+    cw::Vector{Int8} # 1 or 2
     """
     The impedance data I/O code that defines the units in which the winding impedances
     `r1_2` and `x1_2` are specified:
@@ -435,7 +435,7 @@ struct Transformers <: Records
       and winding bus base voltage.
     `cz` = 1 by default.
     """
-    cz::Vector{Int} # 1, 2 or 3
+    cz::Vector{Int8} # 1, 2 or 3
     """
     The magnetizing admittance I/O code that defines the units in which `mag1` and `mag2` are specified:
     * 1 for complex admittance in pu on system base quantities;
@@ -443,7 +443,7 @@ struct Transformers <: Records
       and nominal voltage.
     `cm` = 1 by default.
     """
-    cm::Vector{Int} # 1 or 2
+    cm::Vector{Int8} # 1 or 2
     """
     When `cm` is 1, `mag1` is the magnetizing conductance in pu on system base quantities;
     when `cm` is 2, `mag1` is the no load loss in watts.
@@ -463,7 +463,7 @@ struct Transformers <: Records
     * 2 (for the winding two bus).
     `nmetr` = 2 by default.
     """
-    nmetr::Vector{Int} # 1 or 2
+    nmetr::Vector{Int8} # 1 or 2
     """
     An alphanumeric identifier assigned to the transformer. The name may be up to twelve characters.
     `name` may contain any combination of blanks, uppercase letters, numbers and special characters.
@@ -624,7 +624,7 @@ struct Transformers <: Records
     a negative control mode suppresses the automatic adjustment of this transformer winding.
     `cod1` = 0 by default.
     """
-    cod1::Vector{Int}
+    cod1::Vector{Int8} # one of: -4, -3, -2, -1, 0, 1, 2, 3, 4
     """
     The bus number, or extended bus name enclosed in single quotes, of the bus whose voltage
     is to be controlled by the transformer turns ratio adjustment option of the power flow
@@ -736,7 +736,7 @@ struct Transformers <: Records
     `cod2` = 0 by default.
     _Ignored for a two-winding transformer._
     """
-    cod2::Vector{Union{Int, Missing}} # one of: -3, -2, -1, 0, 1, 2, 3
+    cod2::Vector{Union{Int8, Missing}} # one of: -3, -2, -1, 0, 1, 2, 3
     """
     The bus number, or extended bus name enclosed in single quotes, of the bus whose voltage
     is to be controlled by the transformer turns ratio adjustment option of the power flow
@@ -868,7 +868,7 @@ struct Transformers <: Records
     `cod3` = 0 by default.
     _Ignored for a two-winding transformer._
     """
-    cod3::Vector{Union{Int, Missing}}
+    cod3::Vector{Union{Int8, Missing}} # one of: -3, -2, -1, 0, 1, 2, 3
     """
     The bus number, or extended bus name enclosed in single quotes, of the bus whose voltage
     is to be controlled by the transformer turns ratio adjustment option of the power flow
