@@ -19,7 +19,7 @@ struct CaseID <: Tables.AbstractRow
     0 - base case (i.e., clear the working case before adding data to it).
     1 - add data to the working case.
     """
-    ic::Int
+    ic::Int8
     "System base MVA."
     sbase::Float64
 end
@@ -48,6 +48,11 @@ Tables.rowcount(x::Records) = length(x)  # faster than going via `columnnames`
 Base.length(x::Records) = length(getfield(x, 1)::Vector)
 Base.size(x::R) where {R <: Records} = (length(x), fieldcount(R))
 
+const BusNum = Int32
+const AreaNum = Int16
+const ZoneNum = Int16
+const OwnerNum = Int16
+
 """
     $TYPEDEF
 
@@ -63,7 +68,7 @@ $TYPEDFIELDS
 """
 struct Buses <: Records
     "Bus number (1 to 999997)."
-    i::Vector{Int}
+    i::Vector{BusNum}
     """
     Alphanumeric identifier assigned to bus "I".
     The name may be up to twelve characters and must be enclosed in single quotes.
@@ -96,15 +101,15 @@ struct Buses <: Records
     """
     bl::Vector{Float64}
     "Area number. 1 through the maximum number of areas at the current size level."
-    area::Vector{Int}
+    area::Vector{AreaNum}
     "Zone number. 1 through the maximum number of zones at the current size level."
-    zone::Vector{Int}
+    zone::Vector{ZoneNum}
     "Bus voltage magnitude; entered in pu."
     vm::Vector{Float64}
     "Bus voltage phase angle; entered in degrees."
     va::Vector{Float64}
     "Owner number. 1 through the maximum number of owners at the current size level."
-    owner::Vector{Int}
+    owner::Vector{OwnerNum}
 end
 
 """
@@ -120,7 +125,7 @@ $TYPEDFIELDS
 """
 struct Loads <: Records
     "Buses number, or extended buses name enclosed in single quotes."
-    i::Vector{Int}
+    i::Vector{BusNum}
     """
     One- or two-character uppercase non blank alphanumeric load identifier used to distinguish among multiple loads at bus "I".
     It is recommended that, at buses for which a single load is present, the load be designated as having the load identifier '1'.
@@ -129,9 +134,9 @@ struct Loads <: Records
     "Initial load status of one for in-service and zero for out-of-service."
     status::Vector{Bool}
     "Area to which the load is assigned (1 through the maximum number of areas at the current size level)."
-    area::Vector{Int}
+    area::Vector{AreaNum}
     "Zone to which the load is assigned (1 through the maximum number of zones at the current size level)."
-    zone::Vector{Float64}
+    zone::Vector{ZoneNum}
     "Active power component of constant MVA load; entered in MW."
     pl::Vector{Float64}
     "Reactive power component of constant MVA load; entered in Mvar."
@@ -148,7 +153,7 @@ struct Loads <: Records
     """
     yq::Vector{Float64}
     "Owner to which the load is assigned (1 through the maximum number of owners at the current size level)."
-    owner::Vector{Int}
+    owner::Vector{OwnerNum}
 end
 
 
@@ -164,7 +169,7 @@ $TYPEDFIELDS
 """
 struct Generators <: Records
     "Bus number, or extended bus name enclosed in single quotes."
-    i::Vector{Int}
+    i::Vector{BusNum}
     """
     One- or two-character uppercase non blank alphanumeric machine identifier used to distinguish among multiple machines at bus "I".
     It is recommended that, at buses for which a single machine is present, the machine be designated as having the machine identifier ’1’.
@@ -200,7 +205,7 @@ struct Generators <: Records
     IREG is entered as zero if the plant is to regulate its own voltage and must be zero for a type three (swing) bus.
     IREG = 0 by default.
     """
-    ireg::Vector{Int}
+    ireg::Vector{BusNum}
     """
     Total MVA base of the units represented by this machine; entered in MVA.
     This quantity is not needed in normal power flow and equivalent construction work,
@@ -257,7 +262,7 @@ struct Generators <: Records
     Each machine may have up to four owners.
     By default, O1 is the owner to which bus "I" is assigned and O2, O3, and O4 are zero.
     """
-    oi::Vector{Int}
+    oi::Vector{OwnerNum}
     """
     Fraction of total ownership assigned to owner Oi; each Fi must be positive.
     The Fi values are normalized such that they sum to 1.0 before they are placed in the working case.
@@ -287,13 +292,13 @@ $TYPEDFIELDS
 """
 struct Branches <: Records
     "Branch \"from bus\" number, or extended bus name enclosed in single quotes."
-    i::Vector{Int}
+    i::Vector{BusNum}
     """
     Branch "to bus" number, or extended bus name enclosed in single quotes.
     "J" is entered as a negative number, or with a minus sign before the first character of the extended bus name,
     to designate it as the metered end; otherwise, bus "I" is assumed to be the metered end.
     """
-    j::Vector{Int}
+    j::Vector{BusNum}
     """
     One- or two-character uppercase nonblank alphanumeric branch circuit identifier;
     the first character of CKT must not be an ampersand "&".
@@ -357,7 +362,7 @@ struct Branches <: Records
     Each branch may have up to four owners.
     By default, O1 is the owner to which bus "I" is assigned and O2, O3, and O4 are zero.
     """
-    oi::Vector{Int}
+    oi::Vector{OwnerNum}
     """
     Fraction of total ownership assigned to owner Oi; each Fi must be positive.
     The Fi values are normalized such that they sum to 1.0 before they are placed in the working case.
@@ -399,19 +404,19 @@ struct Transformers <: Records
     phase shift angle may be adjusted by the power flow solution activities;
     any winding(s) of a three-winding transformer may be adjusted. No default is allowed.
     """
-    i::Vector{Int}
+    i::Vector{BusNum}
     """
     The bus number, or extended bus name enclosed in single quotes, of the bus to which the
     second winding is connected. This winding may have a fixed, off-nominal tap ratio
     assigned to it. No default is allowed.
     """
-    j::Vector{Int}
+    j::Vector{BusNum}
     """
     The bus number, or extended bus name enclosed in single quotes, of the bus to which the
     third winding is connected. Zero is used to indicate that no third winding is present.
     _Always equal to zero for a two-winding transformer._
     """
-    k::Vector{Int}
+    k::Vector{BusNum}
     """
     One- or two-character uppercase nonblank alphanumeric transformer circuit identifier;
     the first character of `ckt` must not be an ampersand ('&').
@@ -479,7 +484,7 @@ struct Transformers <: Records
     An owner number; (1 through the maximum number of owners at the current size level).
     Each transformer may have up to four owners. By default, O1 is the owner to which bus "I" is assigned
     """
-    oi::Vector{Int}
+    oi::Vector{OwnerNum}
     """
     The fraction of total ownership assigned to owner `Oi`; each Fi must be positive.
     The Fi values are normalized such that they sum to 1.0 before they are placed in the working case.
@@ -638,7 +643,7 @@ struct Transformers <: Records
     if `cont1` is entered as a negative number, the ratio is adjusted as if bus `|cont1|` is on the winding one side of the transformer.
     `cont1` = 0 by default.
     """
-    cont1::Vector{Int}
+    cont1::Vector{BusNum}
     """
     `rma1` is the upper limit (and `rmi1` the lower limit) of either:
     * Off-nominal turns ratio in pu of winding one bus base voltage when `|cod1|` is 1 or 2 and `cw` is 1;
@@ -666,7 +671,7 @@ struct Transformers <: Records
     `ntp1` must be between 2 and 9999.
     `ntp1` = 33 by default.
     """
-    ntp1::Vector{Int}
+    ntp1::Vector{Int16}
     """
     The number of a transformer impedance correction table if this transformer winding’s
     impedance is to be a function of either off-nominal turns ratio or phase shift angle,
@@ -752,7 +757,7 @@ struct Transformers <: Records
     two side of the transformer. `cont2` = 0 by default.
     _Ignored for a two-winding transformer._
     """
-    cont2::Vector{Union{Int, Missing}}
+    cont2::Vector{Union{BusNum, Missing}}
     """
     `rma2` is the upper limit (and `rmi2` the lower limit) of either:
     * Off-nominal turns ratio in pu of winding two bus base voltage when `|cod2|` is 1 or 2 and `cw` is 1;
@@ -792,7 +797,7 @@ struct Transformers <: Records
     `ntp2` = 33 by default.
     _Ignored for a two-winding transformer._
     """
-    ntp2::Vector{Union{Int, Missing}}
+    ntp2::Vector{Union{Int16, Missing}}
     """
     The number of a transformer impedance correction table if this transformer winding’s
     impedance is to be a function of either off-nominal turns ratio or phase shift angle,
@@ -884,7 +889,7 @@ struct Transformers <: Records
     three side of the transformer. `cont3` = 0 by default.
     _Ignored for a two-winding transformer._
     """
-    cont3::Vector{Union{Int, Missing}}
+    cont3::Vector{Union{BusNum, Missing}}
     """
     `rma3` is the upper limit (and `rmi3` the lower limit) of either:
     * Off-nominal turns ratio in pu of winding three bus base voltage when `|cod3|` is 1 or 2 and `cw` is 1;
@@ -924,7 +929,7 @@ struct Transformers <: Records
     `ntp3` = 33 by default.
     _Ignored for a two-winding transformer._
     """
-    ntp3::Vector{Union{Int, Missing}}
+    ntp3::Vector{Union{Int16, Missing}}
     """
     The number of a transformer impedance correction table if this transformer winding’s
     impedance is to be a function of either off-nominal turns ratio or phase shift angle,
@@ -1017,7 +1022,7 @@ struct AreaInterchanges <: Records
     """
     Area number (1 through the maximum number of areas at the current size level)
     """
-    i::Vector{Int}
+    i::Vector{AreaNum}
     """
     Bus number, or extended bus name enclosed in single quotes, of the area slack bus for
     area interchange control. The bus must be a generator (type two) bus in the specified
@@ -1025,7 +1030,7 @@ struct AreaInterchanges <: Records
     bus or a bus number of zero specified for its area slack bus number.
     `isw` = 0 by default.
     """
-    isw::Vector{Int}
+    isw::Vector{BusNum}
     """
     Desired net interchange leaving the area (export); entered in MW.
     `pdes` = 0.0 by default.
@@ -1072,7 +1077,7 @@ struct TwoTerminalDCLines <: Records
     """
     The DC line number.
     """
-    i::Vector{Int}
+    i::Vector{Int32}
     """
     Control mode:
     * 0 for blocked,
@@ -1139,7 +1144,7 @@ struct TwoTerminalDCLines <: Records
     Iteration limit for capacitor commutated two-terminal DC line Newton solution procedure.
     `cccitmx` = 20 by default.
     """
-    cccitmx::Vector{Int}
+    cccitmx::Vector{Int32}
     """
     Acceleration factor for capacitor commutated two-terminal DC line Newton solution procedure.
     `cccacc` = 1.0 by default.
@@ -1150,12 +1155,12 @@ struct TwoTerminalDCLines <: Records
     Rectifier converter bus number, or extended bus name enclosed in single quotes.
     No default.
     """
-    ipr::Vector{Int}
+    ipr::Vector{BusNum}
     """
     Number of bridges in series (rectifier).
     No default.
     """
-    nbr::Vector{Int}
+    nbr::Vector{Int32}
     """
     Nominal maximum rectifier firing angle; entered in degrees.
     No default.
@@ -1212,19 +1217,19 @@ struct TwoTerminalDCLines <: Records
     between the phase angles at this bus and the AC/DC interface (i.e. the converter bus, `ipr`).
     `icr` = 0 by default.
     """
-    icr::Vector{Int}
+    icr::Vector{BusNum}
     """
     Winding one side "from bus" number, or extended bus name enclosed in single quotes,
     of a two-winding transformer.
     `ifr` = 0 by default.
     """
-    ifr::Vector{Int}
+    ifr::Vector{BusNum}
     """
     Winding two side "to bus" number, or extended bus name enclosed in single quotes,
     of a two-winding transformer.
     `itr` = 0 by default.
     """
-    itr::Vector{Int}
+    itr::Vector{BusNum}
     """
     Circuit identifier; the branch described by `ifr`, `itr`, and `idr` must have been entered
     as a two-winding transformer; an AC transformer may control at most only one DC converter.
@@ -1248,11 +1253,11 @@ struct TwoTerminalDCLines <: Records
     """
     Inverter converter bus number, or extended bus name enclosed in single quotes.
     """
-    ipi::Vector{Int}
+    ipi::Vector{BusNum}
     """
     Number of bridges in series (inverter).
     """
-    nbi::Vector{Int}
+    nbi::Vector{Int32}
     """
     Nominal maximum inverter firing angle; entered in degrees.
     """
@@ -1296,17 +1301,17 @@ struct TwoTerminalDCLines <: Records
     """
     Inverter firing angle measuring bus number, or extended bus name enclosed in single quotes.
     """
-    ici::Vector{Int}
+    ici::Vector{BusNum}
     """
     Winding one side "from bus" number, or extended bus name enclosed in single quotes,
     of a two-winding transformer.
     """
-    ifi::Vector{Int}
+    ifi::Vector{BusNum}
     """
     Winding two side "to bus" number, or extended bus name enclosed in single quotes,
     of a two-winding transformer.
     """
-    iti::Vector{Int}
+    iti::Vector{BusNum}
     """
     Circuit identifier; the branch described by `ifr`, `itr`, and `idr` must have been entered
     as a two-winding transformer; an AC transformer may control at most only one DC converter.
