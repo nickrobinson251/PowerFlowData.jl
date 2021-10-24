@@ -104,7 +104,11 @@ end
 
 function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {R <: Records}
     # Records terminated by specifying a bus number of zero.
-    while !(eof(bytes, pos, len) || peekbyte(bytes, pos) == UInt8('0'))
+    while !(
+        eof(bytes, pos, len) ||
+        peekbyte(bytes, pos) == UInt8('0') ||
+        peekbyte(bytes, pos) == UInt8(' ') && !eof(bytes, pos+1, len) && peekbyte(bytes, pos+1) == UInt8('0')
+    )
         _, pos = parse_row!(rec, bytes, pos, len, options)
     end
     pos = next_line(bytes, pos, len)  # Move past a "0 bus" line.
