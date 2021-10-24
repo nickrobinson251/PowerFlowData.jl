@@ -60,6 +60,9 @@ function parse_network(source)
     switched_shunts, pos = parse_records!(SwitchedShunts(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
 
+    impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed ImpedanceCorrections: nrows = $(length(impedance_corrections)), pos = $pos"
+
     return Network(
         caseid,
         buses,
@@ -71,6 +74,7 @@ function parse_network(source)
         two_terminal_dc,
         vsc_dc,
         switched_shunts,
+        impedance_corrections,
     )
 end
 
@@ -222,8 +226,8 @@ end
     coln = N + 1
     colb = N + 2
     for _ in 2:8  # parse n2, b2, ..., n8, b8
-        Tn = eltype(fieldtype(SwitchedShunts, coln))
-        Tb = eltype(fieldtype(SwitchedShunts, colb))
+        Tn = eltype(fieldtype(R, coln))
+        Tb = eltype(fieldtype(R, colb))
         push!(block.args, :(
             if newline(code)  # TODO: improve on checking `newline` 7 times?
                 push!(getfield(rec, $coln), zero($Tn))
@@ -238,5 +242,31 @@ end
     end
     push!(block.args, :(return rec, pos))
     # @show block
+    return block
+end
+
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: ImpedanceCorrections}
+    block = Expr(:block)
+    N = fieldcount(R) - 18  # the last 18 = 9(T) + 9(F) columns reqire special handling.
+    append!(block.args, _parse_values(R, 1, N))
+    colt = N + 1
+    colf = N + 2
+    for _ in 3:11  # parse t3, f3, ..., t11, bf11
+        Tt = eltype(fieldtype(R, colt))
+        Tf = eltype(fieldtype(R, colf))
+        push!(block.args, :(
+            if newline(code)  # TODO: improve on checking `newline` multiple times?
+                push!(getfield(rec, $colt), zero($Tt))
+                push!(getfield(rec, $colf), zero($Tf))
+            else
+                (rec, pos, code) = parse_value!(rec, $colt, $Tt, bytes, pos, len, options)
+                (rec, pos, code) = parse_value!(rec, $colf, $Tf, bytes, pos, len, options)
+            end
+        ))
+        colt += 2
+        colf += 2
+    end
+    push!(block.args, :(return rec, pos))
+    @show block
     return block
 end

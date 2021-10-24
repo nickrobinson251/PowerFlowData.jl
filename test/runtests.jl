@@ -63,7 +63,7 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 10 data categories:
+            Network with 11 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -74,6 +74,7 @@ using Test
              $(sprint(show, mime, net.two_terminal_dc; context))
              $(sprint(show, mime, net.vsc_dc; context))
              $(sprint(show, mime, net.switched_shunts; context))
+             $(sprint(show, mime, net.impedance_corrections; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
