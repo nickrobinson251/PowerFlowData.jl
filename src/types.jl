@@ -10,6 +10,8 @@
 """
     $TYPEDEF
 
+Case identification data.
+
 # Fields
 $TYPEDFIELDS
 """
@@ -1842,8 +1844,10 @@ Currently supported are:
 1. [`TwoTerminalDCLines`](@ref)
 1. [`VSCDCLines`](@ref)
 1. [`SwitchedShunts`](@ref)
+1. [`ImpedanceCorrections`](@ref)
 1. [`Zones`](@ref)
 1. [`InterAreaTransfers`](@ref)
+1. [`Owners`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
