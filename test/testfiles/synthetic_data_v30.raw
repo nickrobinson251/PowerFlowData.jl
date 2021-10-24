@@ -46,6 +46,8 @@ SOME OTHER COMMENTS
 127,'CDEF' /*[CDEF] */
 227,' CDEG ' /*[ CDEG] */
 0 / end of zone cards
+     1,     2,'A',    10.00
+     1,     2,'B',   -20.00
 0 / end of area transaction cards
 1,'      ABC   '
 2,'      CDE  '

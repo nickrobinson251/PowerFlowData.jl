@@ -68,3 +68,8 @@ ImpedanceCorrections
 ```@docs
 Zones
 ```
+
+## Inter-Area Transfers
+```@docs
+InterAreaTransfers
+```
