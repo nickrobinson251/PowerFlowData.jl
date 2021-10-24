@@ -112,7 +112,11 @@ struct Buses <: Records
     vm::Vector{Float64}
     "Bus voltage phase angle; entered in degrees."
     va::Vector{Float64}
-    "Owner number. 1 through the maximum number of owners at the current size level."
+    """
+    Owner number.
+    1 through the maximum number of owners at the current size level.
+    See [`Owners`](@ref).
+    """
     owner::Vector{OwnerNum}
 end
 
@@ -159,7 +163,11 @@ struct Loads <: Records
     YQ is a negative quantity for an inductive load and positive for a capacitive load.
     """
     yq::Vector{Float64}
-    "Owner to which the load is assigned (1 through the maximum number of owners at the current size level)."
+    """
+    Owner to which the load is assigned.
+    1 through the maximum number of owners at the current size level.
+    See [`Owners`](@ref).
+    """
     owner::Vector{OwnerNum}
 end
 
@@ -266,7 +274,7 @@ struct Generators <: Records
     pb::Vector{Float64}
     """
     Owner number; (1 through the maximum number of owners at the current size level).
-    Each machine may have up to four owners.
+    Each machine may have up to four owners. See [`Owners`](@ref).
     By default, O1 is the owner to which bus "I" is assigned and O2, O3, and O4 are zero.
     """
     oi::Vector{OwnerNum}
@@ -366,7 +374,7 @@ struct Branches <: Records
     len::Vector{Float64}
     """
     Owner number; 1 through the maximum number of owners at the current size level.
-    Each branch may have up to four owners.
+    Each branch may have up to four owners. See [`Owners`](@ref).
     By default, O1 is the owner to which bus "I" is assigned and O2, O3, and O4 are zero.
     """
     oi::Vector{OwnerNum}
@@ -489,7 +497,8 @@ struct Transformers <: Records
     stat::Vector{Bool}
     """
     An owner number; (1 through the maximum number of owners at the current size level).
-    Each transformer may have up to four owners. By default, O1 is the owner to which bus "I" is assigned
+    Each transformer may have up to four owners. See [`Owners`](@ref).
+    By default, O1 is the owner to which bus "I" is assigned
     """
     oi::Vector{OwnerNum}
     """
@@ -1368,7 +1377,7 @@ struct VSCDCLines <: Records
     rdc::Vector{Float64}
     """
     An owner number; (1 through the maximum number of owners at the current size level).
-    Each VSC DC line may have up to four owners.
+    Each VSC DC line may have up to four owners. See [`Owners`](@ref).
     By default, `01` is 1, and O2, O3 and O4 are zero.
     """
     o1::Vector{OwnerNum}
@@ -1381,6 +1390,7 @@ struct VSCDCLines <: Records
     # TODO: are o2, f2, o3, f3, o4, f4 always present?
     """
     An owner number; (1 through the maximum number of owners at the current size level).
+    See [`Owners`](@ref).
     By default, `o2` is zero.
     """
     o2::Vector{OwnerNum}
@@ -1785,6 +1795,28 @@ struct InterAreaTransfers <: Records
     ptran::Vector{Float64}
 end
 
+"""
+	$TYPEDEF
+
+PSS/E allows the user to identify which organization or utility actually owns a facility,
+a piece of equipment, or a load. Major network elements can have up to four different owners.
+This facilitates interpretation of results and reporting of results on the basis of ownership.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct Owners <: Records
+    "Owner number (1 through the maximum number of owners at the current size level)."
+    i::Vector{OwnerNum}
+    """
+    Alphanumeric identifier assigned to owner `i`.
+    The name may contain up to twelve characters and must be enclosed in single quotes.
+    `owname` may be any combination of blanks, uppercase letters, numbers, and special characters.
+    `owname` is set to twelve blanks by default.
+    """
+    owname::Vector{InlineString15}
+end
+
 ###
 ### Network
 ###
@@ -1855,6 +1887,8 @@ struct Network
     zones::Zones
     "Inter-area tranfer records."
     area_transfers::InterAreaTransfers
+    "Owner records."
+    owners::Owners
 end
 
 ###
