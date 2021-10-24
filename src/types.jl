@@ -1721,6 +1721,10 @@ struct ImpedanceCorrections <: Records
     f11::Vector{Float64}
 end
 
+# Stubs as we don't yet parse this data
+struct MultiTerminalDCLines <: Records end
+struct MultiSectionLineGroups <: Records end
+
 ###
 ### Network
 ###

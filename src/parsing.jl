@@ -63,6 +63,9 @@ function parse_network(source)
     impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed ImpedanceCorrections: nrows = $(length(impedance_corrections)), pos = $pos"
 
+    multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines(), bytes, pos, len, OPTIONS)
+    multi_section_lines, pos = parse_records!(MultiSectionLineGroups(), bytes, pos, len, OPTIONS)
+
     return Network(
         caseid,
         buses,
