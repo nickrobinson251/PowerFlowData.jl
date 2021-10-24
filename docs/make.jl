@@ -8,8 +8,15 @@ makedocs(;
     authors="Nick Robinson <npr251@gmail.com> and contributors",
     repo="https://github.com/nickrobinson251/PowerFlowData.jl/blob/{commit}{path}#{line}",
     sitename="PowerFlowData.jl",
-    format=Documenter.HTML(canonical="https://nickrobinson251.github.io/PowerFlowData.jl"),
-    pages=["Home" => "index.md" ],
+    format=Documenter.HTML(
+        canonical="https://nickrobinson251.github.io/PowerFlowData.jl",
+        prettyurls=false,
+    ),
+    pages=[
+        "Home" => "index.md",
+        "API" => "api.md",
+        "Alternatives" => "alternatives.md",
+    ],
     strict=true,
     checkdocs=:exports,
 )
