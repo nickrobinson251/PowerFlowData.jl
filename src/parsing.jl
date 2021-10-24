@@ -217,19 +217,28 @@ end
 ### SwitchedShunts
 ###
 
-# SwitchedShunts can have anywhere between 1 - 8 `N` and `B` values in the data itself,
-# if n2, b2, ..., n8, b8 are not present, we set them to zero.
-@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: SwitchedShunts}
+const N_SPECIAL = IdDict(
+    # SwitchedShunts can have anywhere between 1 - 8 `N` and `B` values in the data itself,
+    # if n2, b2, ..., n8, b8 are not present, we set them to zero.
+    # i.e. the last 14 = 7(n) + 7(b) columns reqire special handling.
+    SwitchedShunts => 14,
+    # SwitchedShunts can have anywhere between 2 - 11 `T` and `F` values in the data itself,
+    # if t3, f3, ..., t11, f11 are not present, we set them to zero.
+    # i.e. the last 18 = 9(t) + 9(f) columns reqire special handling.
+    ImpedanceCorrections => 18,
+)
+
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections}}
     block = Expr(:block)
-    N = fieldcount(R) - 14  # the last 14 = 7(N) + 7(B) columns reqire special handling.
+    N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
     coln = N + 1
     colb = N + 2
-    for _ in 2:8  # parse n2, b2, ..., n8, b8
+    for _ in 1:(N_SPECIAL[R] ÷ 2)
         Tn = eltype(fieldtype(R, coln))
         Tb = eltype(fieldtype(R, colb))
         push!(block.args, :(
-            if newline(code)  # TODO: improve on checking `newline` 7 times?
+            if newline(code)  # TODO: improve on checking `newline` multiple times?
                 push!(getfield(rec, $coln), zero($Tn))
                 push!(getfield(rec, $colb), zero($Tb))
             else
@@ -242,31 +251,5 @@ end
     end
     push!(block.args, :(return rec, pos))
     # @show block
-    return block
-end
-
-@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: ImpedanceCorrections}
-    block = Expr(:block)
-    N = fieldcount(R) - 18  # the last 18 = 9(T) + 9(F) columns reqire special handling.
-    append!(block.args, _parse_values(R, 1, N))
-    colt = N + 1
-    colf = N + 2
-    for _ in 3:11  # parse t3, f3, ..., t11, bf11
-        Tt = eltype(fieldtype(R, colt))
-        Tf = eltype(fieldtype(R, colf))
-        push!(block.args, :(
-            if newline(code)  # TODO: improve on checking `newline` multiple times?
-                push!(getfield(rec, $colt), zero($Tt))
-                push!(getfield(rec, $colf), zero($Tf))
-            else
-                (rec, pos, code) = parse_value!(rec, $colt, $Tt, bytes, pos, len, options)
-                (rec, pos, code) = parse_value!(rec, $colf, $Tf, bytes, pos, len, options)
-            end
-        ))
-        colt += 2
-        colf += 2
-    end
-    push!(block.args, :(return rec, pos))
-    @show block
     return block
 end
