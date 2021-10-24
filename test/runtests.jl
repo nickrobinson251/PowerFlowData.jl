@@ -39,6 +39,7 @@ using Test
 
         for T in (
             Buses, Loads, Generators, Branches, Transformers, AreaInterchanges, VSCDCLines,
+            SwitchedShunts
         )
             @test T <: PowerFlowData.Records
             @test Tables.istable(T)
@@ -62,7 +63,7 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 9 data categories:
+            Network with 10 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -72,6 +73,7 @@ using Test
              $(sprint(show, mime, net.interchanges; context))
              $(sprint(show, mime, net.two_terminal_dc; context))
              $(sprint(show, mime, net.vsc_dc; context))
+             $(sprint(show, mime, net.switched_shunts; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -154,6 +156,9 @@ using Test
         @test vsc_dc.rmpct1 == [100.0]     # last entry of 2nd row
         @test vsc_dc.ibus2 == [114]        #  1st entry of 3nd row
         @test vsc_dc.rmpct2 == [100.0]     # last entry of 3nd row
+
+        switched_shunts = net1.switched_shunts
+        @test isempty(switched_shunts)
     end
 
     @testset "v29 file" begin
@@ -218,5 +223,14 @@ using Test
 
         vsc_dc = net2.vsc_dc
         @test isempty(vsc_dc)
+
+        switched_shunts = net2.switched_shunts
+        @test switched_shunts.i == [175, 177]      # first col
+        @test switched_shunts.n1 == [2, 1]         # `n1` col present for both
+        @test switched_shunts.b1 == [19.76, 15.60] # `b1` col present for both
+        @test switched_shunts.n2 == [0, 1]         # `n2` col present only for second entry
+        @test switched_shunts.b2 == [0.0, 17.69]   # `b2` col present only for second entry
+        @test switched_shunts.n8 == [0, 0]         # `n8` col not present for either entry
+        @test switched_shunts.b8 == [0.0, 0.0]     # last col; `b8` col not present for either entry
     end
 end

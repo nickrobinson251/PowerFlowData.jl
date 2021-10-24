@@ -36,6 +36,7 @@ SOME OTHER COMMENTS
   1117, 1, 1, 150.000,1.01200,1118.0000,1.6400,  0.00, 210.00, 1300.19,0.5000, 100.00,-100.00,1117,100.00
    114, 2, 1, -20.000,1.02100,1119.0000,1.6400,  0.00, 210.00, 1300.19,0.5000, 100.00,-100.00, 114,100.00
 0 / end of Voltage Source Converter cards
+0 / end of shunt cards
 113,0, 1.123, 1.123,     0, 100.0,' '     ,     26.00, 1,  26.00                                                                                       /* [GILLY   113  ] */
 0 / end of transformer impedance correction table cards
 0 / end of multi-terminal DC line cards
