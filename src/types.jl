@@ -1755,6 +1755,36 @@ struct Zones <: Records
     zoname::Vector{InlineString15}
 end
 
+"""
+    $TYPEDEF
+
+Using PSS/E, the user has the capability to identify in which area each [bus](@ref Buses) or [load](@ref Loads) resides.
+Further, the user can schedule active power transfers between pairs of areas.
+
+See [`AreaInterchanges`](@ref) for desired net interchange.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct InterAreaTransfers <: Records
+    "\"From area\" number (1 through the maximum number of areas at the current size level)."
+    arfrom::Vector{AreaNum}
+    "\"To area\" number (1 through the maximum number of areas at the current size level)."
+    arto::Vector{AreaNum}
+    """
+    Single-character (0 through 9 or A through Z) upper-case interarea transfer identifier
+    used to distinguish among multiple transfers between areas `arfrom` and `arto`.
+    `trid` = "1" by default.
+    """
+    trid::Vector{InlineString1}
+    """
+    MW comprising this transfer.
+    A positive `ptran` indicates that area `arfrom` is selling to area `arto`.
+    `ptran` = 0.0 by default.
+    """
+    ptran::Vector{Float64}
+end
+
 ###
 ### Network
 ###
@@ -1781,6 +1811,7 @@ Currently supported are:
 1. [`VSCDCLines`](@ref)
 1. [`SwitchedShunts`](@ref)
 1. [`Zones`](@ref)
+1. [`InterAreaTransfers`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
@@ -1822,6 +1853,8 @@ struct Network
     impedance_corrections::ImpedanceCorrections
     "Zone records."
     zones::Zones
+    "Inter-area tranfer records."
+    area_transfers::InterAreaTransfers
 end
 
 ###

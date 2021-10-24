@@ -70,6 +70,9 @@ function parse_network(source)
     zones, pos = parse_records!(Zones(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Zones: nrows = $(length(zones)), pos = $pos"
 
+    area_transfers, pos = parse_records!(InterAreaTransfers(), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed InterAreaTransfers: nrows = $(length(area_transfers)), pos = $pos"
+
     return Network(
         caseid,
         buses,
@@ -83,6 +86,7 @@ function parse_network(source)
         switched_shunts,
         impedance_corrections,
         zones,
+        area_transfers,
     )
 end
 
