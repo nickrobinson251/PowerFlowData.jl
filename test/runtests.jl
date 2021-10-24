@@ -37,7 +37,9 @@ using Test
         @test df isa DataFrame
         @test size(df) == (3, 2)
 
-        for T in (Buses, Loads, Generators, Branches, Transformers, AreaInterchanges)
+        for T in (
+            Buses, Loads, Generators, Branches, Transformers, AreaInterchanges, VSCDCLines,
+        )
             @test T <: PowerFlowData.Records
             @test Tables.istable(T)
         end
@@ -60,7 +62,7 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 8 data categories:
+            Network with 9 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -69,6 +71,7 @@ using Test
              $(sprint(show, mime, net.transformers; context))
              $(sprint(show, mime, net.interchanges; context))
              $(sprint(show, mime, net.two_terminal_dc; context))
+             $(sprint(show, mime, net.vsc_dc; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -143,6 +146,14 @@ using Test
         @test two_terminal_dc.xcapr == [0.0]      # last entry of 2nd row
         @test two_terminal_dc.ipi == [2222]       #  1st entry of 3nd row
         @test two_terminal_dc.xcapi == [2.0]      # last entry of 3rd row
+
+        vsc_dc = net1.vsc_dc
+        @test vsc_dc.name == ["line 1 "]   #  1st entry of 1st row
+        @test vsc_dc.f4 == [1.0]           # last entry of 1st row
+        @test vsc_dc.ibus1 == [1117]       #  1st entry of 2nd row
+        @test vsc_dc.rmpct1 == [100.0]     # last entry of 2nd row
+        @test vsc_dc.ibus2 == [114]        #  1st entry of 3nd row
+        @test vsc_dc.rmpct2 == [100.0]     # last entry of 3nd row
     end
 
     @testset "v29 file" begin
@@ -201,5 +212,11 @@ using Test
         @test interchanges.pdes == [32.677, -224.384]
         @test interchanges.ptol == [5.0, 5.0]
         @test interchanges.arname == ["RE          ", "OTP         "]
+
+        two_terminal_dc = net2.two_terminal_dc
+        @test isempty(two_terminal_dc)
+
+        vsc_dc = net2.vsc_dc
+        @test isempty(vsc_dc)
     end
 end

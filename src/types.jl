@@ -47,6 +47,7 @@ Tables.schema(x::R) where {R <: Records} = Tables.Schema(fieldnames(R), fieldtyp
 Tables.rowcount(x::Records) = length(x)  # faster than going via `columnnames`
 Base.length(x::Records) = length(getfield(x, 1)::Vector)
 Base.size(x::R) where {R <: Records} = (length(x), fieldcount(R))
+Base.isempty(x::Records) = length(x) == 0
 
 const BusNum = Int32
 const AreaNum = Int16
@@ -1323,12 +1324,229 @@ struct TwoTerminalDCLines <: Records
     xcapi::Vector{Float64}
 end
 
+"""
+    $TYPEDEF
+
+Voltage source converter (VSC) DC lines.
+
+Defines line quantities and control parameters, and the converter buses (converter 1 and
+converter 2), along with their data quantities and control parameters.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct VSCDCLines <: Records
+    # First line of data
+    """
+    The non-blank alphanumeric identifier assigned to this VSC DC line.
+    Each VSC DC line must have a unique `name`. The name may be up to twelve characters and
+    must be enclosed in single quotes. `name` may contain any combination of blanks,
+    uppercase letters, numbers and special characters.
+    No default.
+    """
+    name::Vector{InlineString15}
+    """
+    Control mode:
+    * 0 for out-of-service,
+    * 1 for in-service.
+    `mdc` = 1 by default.
+    """
+    mdc::Vector{Int8}
+    """
+    The DC line resistance entered in ohms. `rdc` must be positive.
+    No default.
+    """
+    rdc::Vector{Float64}
+    """
+    An owner number; (1 through the maximum number of owners at the current size level).
+    Each VSC DC line may have up to four owners.
+    By default, `01` is 1, and O2, O3 and O4 are zero.
+    """
+    o1::Vector{OwnerNum}
+    """
+    The fraction of total ownership assigned to owner `o1`; each F_i must be positive.
+    The F_i values are normalized such that they sum to 1.0 before they are placed in the working case.
+    By default, each F_i is 1.0.
+    """
+    f1::Vector{Float64}
+    # TODO: are o2, f2, o3, f3, o4, f4 always present?
+    """
+    An owner number; (1 through the maximum number of owners at the current size level).
+    By default, `o2` is zero.
+    """
+    o2::Vector{OwnerNum}
+    """
+    The fraction of total ownership assigned to owner `o2`; must be positive.
+    By default, `f2` is 1.0.
+    """
+    f2::Vector{Float64}
+    """
+    An owner number; (1 through the maximum number of owners at the current size level).
+    By default, `o3` is zero.
+    """
+    o3::Vector{OwnerNum}
+    """
+    The fraction of total ownership assigned to owner `o2`; must be positive.
+    By default, `f3` is 1.0.
+    """
+    f3::Vector{Float64}
+    """
+    An owner number; (1 through the maximum number of owners at the current size level).
+    By default, `o4` is zero.
+    """
+    o4::Vector{OwnerNum}
+    """
+    The fraction of total ownership assigned to owner `o2`; must be positive.
+    By default, `f4` is 1.0.
+    """
+    f4::Vector{Float64}
+    # Second line: data for Converter 1
+    "Converter 1 bus number, or extended bus name enclosed in single quotes. No default."
+    ibus1::Vector{BusNum}
+    """
+    Code for the type of converter 1 DC control:
+    * 0 for converter out-of-service,
+    * 1 for DC voltage control,
+    * 2 for MW control.
+    When both converters are in-service, exactly one converter of each VSC DC line must be type 1.
+    No default.
+    """
+    type1::Vector{Int8} # 0, 1, or 2
+    """
+    Converter 1 AC control mode:
+    * 1 for AC voltage control,
+    * 2 for fixed AC power factor.
+    `mode` = 1 by default.
+    """
+    mode1::Vector{Int8} # 1 or 2
+    """
+    Converter 1 DC setpoint.
+    * For `type` = 1, `dcset` is the scheduled DC voltage on the DC side of the converter bus;
+      entered in kV.
+    * For `type` = 2, `dcset` is the power demand, where a positive value specifies that the
+      converter is feeding active power into the AC network at bus `ibus`, and a negative value
+      specifies that the converter is withdrawing active power from the AC network at bus `ibus`;
+      entered in MW.
+    No default .
+    """
+    docet1::Vector{Float64}
+    """
+    Converter 1 AC setpoint.
+    * For `mode` = 1, `acset` is the regulated AC voltage setpoint; entered in pu.
+    * For `mode` = 2, `acset` is the power factor setpoint.
+    `acset` = 1.0 by default.
+    """
+    acset1::Vector{Float64}
+    """
+    Coefficients of the linear equation used to calculate converter 1 losses:
+    ``KW_{conv loss} = A_{loss} + I_{dc} * B_{loss}``
+    `aloss` is entered in kW. `aloss` = `bloss` = 0.0 by default.
+    """
+    aloss1::Vector{Float64}
+    """
+    Coefficients of the linear equation used to calculate converter 1 losses:
+    ``KW_{conv loss} = A_{loss} + I_{dc} * B_{loss}``
+    `bloss` is entered in kW/amp. `aloss` = `bloss` = 0.0 by default.
+    """
+    bloss1::Vector{Float64}
+    "Minimum converter 1 losses; entered in kW. `minloss` = 0.0 by default."
+    minloss1::Vector{Float64}
+    """
+    Converter 1 MVA rating; entered in MVA.
+    `smax` = 0.0 to allow unlimited converter MVA loading. `smax` = 0.0 by default.
+    """
+    smax1::Vector{Float64}
+    """
+    Converter 1 AC current rating; entered in amps.
+    `imax` = 0.0 to allow unlimited converter current loading.
+    If a positive `imax` is specified, the base voltage assigned to bus `ibus` must be positive.
+    `imax` = 0.0 by default.
+    """
+    imax1::Vector{Float64}
+    """
+    Power weighting factor fraction (0.0 < `pwf` < 1.0) used in reducing the active power order
+    and either the reactive power order (when `mode` is 2) or the reactive power limits (when `mode` is 1)
+    when the converter MVA or current rating is violated.
+    When `pwf` is 0.0, only the active power is reduced;
+    when `PWF` is 1.0, only the reactive power is reduced;
+    otherwise, a weighted reduction of both active and reactive power is applied.
+    `pwf` = 1.0 by default.
+    """
+    pwf1::Vector{Float64}
+    """
+    Reactive power upper limit; entered in Mvar.
+    A positive value of reactive power indicates reactive power flowing into the AC network
+    from the converter; a negative value of reactive power indicates reactive power withdrawn
+    from the AC network. Not used if `mode` = 2.
+    `maxq` = 9999.0 by default.
+    """
+    maxq1::Vector{Float64}
+    """
+    Reactive power lower limit; entered in Mvar.
+    A positive value of reactive power indicates reactive power flowing into the AC network
+    from the converter; a negative value of reactive power indicates reactive power withdrawn
+    from the AC network. Not used if `mode` = 2.
+    `minq` = -9999.0 by default.
+    """
+    minq1::Vector{Float64}
+    """
+    Bus number, or extended bus name enclosed in single quotes, of a remote type 1 or 2 bus
+    whose voltage is to be regulated by this converter to the value specified by `acset`.
+    If bus `remot` is other than a type 1 or 2 bus, bus `ibus` regulates its own voltage to
+    the value specified by `acset`. `remot` is entered as zero if the converter is to regulate
+    its own voltage. Not used if `mode` = 2.
+    `remot` = 0 by default.
+    """
+    remot1::Vector{BusNum}
+    """
+    Percent of the total Mvar required to hold the voltage at the bus controlled by bus `ibus`
+    that are to be contributed by this VSC; `rmpct` must be positive.
+    `rmpct` is needed only if `remot` specifies a valid remote bus and there is more than one
+    local or remote voltage controlling device (plant, switched shunt, FACTS device shunt element,
+    or VSC DC line converter) controlling the voltage at bus `remot` to a setpoint, or `remot`
+    is zero but bus `ibus` is the controlled bus, local or remote, of one or more other setpoint
+    mode voltage controlling devices. Not used if `mode` = 2.
+    `rmpct` = 100.0 by default.
+    """
+    rmpct1::Vector{Float64}
+    # Third line: data for Converter 2
+    "Converter 2 bus number, or extended bus name enclosed in single quotes. No default."
+    ibus2::Vector{BusNum}
+    "Code for the type of converter 2 DC control"
+    type2::Vector{Int8} # 0, 1, or 2
+    "Converter 2 AC control mode"
+    mode2::Vector{Int8} # 1 or 2
+    "Converter 2 DC setpoint."
+    docet2::Vector{Float64}
+    " Converter 2 AC setpoint."
+    acset2::Vector{Float64}
+    "Coefficient ``A_{loss}`` of the linear equation used to calculate converter 2 losses."
+    aloss2::Vector{Float64}
+    "Coefficient ``B_{loss}`` of the linear equation used to calculate converter 2 losses."
+    bloss2::Vector{Float64}
+    "Minimum converter 2 losses; entered in kW. `minloss` = 0.0 by default."
+    minloss2::Vector{Float64}
+    "Converter 2 MVA rating; entered in MVA."
+    smax2::Vector{Float64}
+    "Converter 2 AC current rating; entered in amps."
+    imax2::Vector{Float64}
+    "Power weighting factor fraction (0.0 < `pwf` < 1.0) for converter 2."
+    pwf2::Vector{Float64}
+    "Reactive power upper limit for converter 2; entered in Mvar."
+    maxq2::Vector{Float64}
+    "Reactive power lower limit for converter 2; entered in Mvar."
+    minq2::Vector{Float64}
+    "Bus number to be regulated by converter 2 to the value specified by `acset2`."
+    remot2::Vector{BusNum}
+    rmpct2::Vector{Float64}
+end
+
 ###
 ### Network
 ###
 
 """
-    Network
+    $TYPEDEF
 
 Representation of a power network.
 
@@ -1346,6 +1564,7 @@ Currently supported are:
 1. [`Transformers`](@ref)
 1. [`AreaInterchanges`](@ref)
 1. [`TwoTerminalDCLines`](@ref)
+1. [`VSCDCLines`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
@@ -1379,6 +1598,8 @@ struct Network
     interchanges::AreaInterchanges
     "Two-terminal DC Line records."
     two_terminal_dc::TwoTerminalDCLines
+    "Voltage Source Converter DC Line records."
+    vsc_dc::VSCDCLines
 end
 
 ###
