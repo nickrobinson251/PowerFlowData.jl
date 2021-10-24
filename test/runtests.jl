@@ -159,7 +159,11 @@ using Test
         @test vsc_dc.rmpct2 == [100.0]     # last entry of 3nd row
 
         switched_shunts = net1.switched_shunts
-        @test isempty(switched_shunts)
+        @test switched_shunts.i == [113]   # first col
+        @test switched_shunts.n1 == [1]    # `n1` always present
+        @test switched_shunts.b1 == [26.0] # `b1` always present
+        @test switched_shunts.n8 == [0]    # `n8` not present; should default to zero
+        @test switched_shunts.b8 == [0.0]  # last col; `b8` not present; default to zero
     end
 
     @testset "v29 file" begin
