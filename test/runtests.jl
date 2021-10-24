@@ -164,6 +164,10 @@ using Test
         @test switched_shunts.b1 == [26.0] # `b1` always present
         @test switched_shunts.n8 == [0]    # `n8` not present; should default to zero
         @test switched_shunts.b8 == [0.0]  # last col; `b8` not present; default to zero
+
+        impedance_corrections = net1.impedance_corrections
+        @test impedance_corrections.i == [1]       # first col
+        @test impedance_corrections.f11 == [0.0]   # last col; `f11` not present; default to zero
     end
 
     @testset "v29 file" begin
@@ -237,5 +241,9 @@ using Test
         @test switched_shunts.b2 == [0.0, 17.69]   # `b2` col present only for second entry
         @test switched_shunts.n8 == [0, 0]         # `n8` col not present for either entry
         @test switched_shunts.b8 == [0.0, 0.0]     # last col; `b8` col not present for either entry
+
+        impedance_corrections = net2.impedance_corrections
+        @test impedance_corrections.i == [1, 2]          # first col
+        @test impedance_corrections.f11 == [3.34, 1.129] # last col
     end
 end
