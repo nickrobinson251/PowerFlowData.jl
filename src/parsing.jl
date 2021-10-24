@@ -57,7 +57,7 @@ function parse_network(source)
     vsc_dc, pos = parse_records!(VSCDCLines(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed VSCDCLines: nrows = $(length(vsc_dc)), pos = $pos"
 
-    switched_shunts, pos = parse_records!(SwitchedShunts(), bytes, pos, len, OPTIONS)
+    switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
 
     impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
