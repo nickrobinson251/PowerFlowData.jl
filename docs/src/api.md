@@ -58,3 +58,8 @@ VSCDCLines
 ```@docs
 SwitchedShunts
 ```
+
+## Transformer Impedance Corrections
+```@docs
+ImpedanceCorrections
+```

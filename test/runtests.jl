@@ -63,7 +63,7 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 10 data categories:
+            Network with 11 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -74,6 +74,7 @@ using Test
              $(sprint(show, mime, net.two_terminal_dc; context))
              $(sprint(show, mime, net.vsc_dc; context))
              $(sprint(show, mime, net.switched_shunts; context))
+             $(sprint(show, mime, net.impedance_corrections; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -158,7 +159,15 @@ using Test
         @test vsc_dc.rmpct2 == [100.0]     # last entry of 3nd row
 
         switched_shunts = net1.switched_shunts
-        @test isempty(switched_shunts)
+        @test switched_shunts.i == [113]   # first col
+        @test switched_shunts.n1 == [1]    # `n1` always present
+        @test switched_shunts.b1 == [26.0] # `b1` always present
+        @test switched_shunts.n8 == [0]    # `n8` not present; should default to zero
+        @test switched_shunts.b8 == [0.0]  # last col; `b8` not present; default to zero
+
+        impedance_corrections = net1.impedance_corrections
+        @test impedance_corrections.i == [1]       # first col
+        @test impedance_corrections.f11 == [0.0]   # last col; `f11` not present; default to zero
     end
 
     @testset "v29 file" begin
@@ -232,5 +241,9 @@ using Test
         @test switched_shunts.b2 == [0.0, 17.69]   # `b2` col present only for second entry
         @test switched_shunts.n8 == [0, 0]         # `n8` col not present for either entry
         @test switched_shunts.b8 == [0.0, 0.0]     # last col; `b8` col not present for either entry
+
+        impedance_corrections = net2.impedance_corrections
+        @test impedance_corrections.i == [1, 2]          # first col
+        @test impedance_corrections.f11 == [3.34, 1.129] # last col
     end
 end

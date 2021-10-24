@@ -383,10 +383,10 @@ Each AC transformer to be represented in PSS/E is introduced through transformer
 that specify all the data required to model transformers in power flow calculations, with
 one exception.
 
-That exception is a set of ancillary data, comprising transformer impedance correction tables,
+That exception is a set of ancillary data, comprising transformer impedance correction records,
 which define the manner in which transformer impedance changes as off-nominal turns ratio or
 phase shift angle is adjusted. Those data records are described in Transformer Impedance
-Correction Tables.
+Correction Records, [`ImpedanceCorrections`](@ref).
 
 Both two-winding and three-winding transformers are specified in the transformer data records.
 The data records for the two-winding transformer are common to the three-winding transformer;
@@ -674,9 +674,10 @@ struct Transformers <: Records
     """
     ntp1::Vector{Int16}
     """
-    The number of a transformer impedance correction table if this transformer winding’s
+    The number of a transformer impedance correction record if this transformer winding’s
     impedance is to be a function of either off-nominal turns ratio or phase shift angle,
     or 0 if no transformer impedance correction is to be applied to this transformer winding.
+    See [`ImpedanceCorrections`](@ref).
     `tab1` = 0 by default.
     """
     tab1::Vector{Int}
@@ -800,9 +801,10 @@ struct Transformers <: Records
     """
     ntp2::Vector{Union{Int16, Missing}}
     """
-    The number of a transformer impedance correction table if this transformer winding’s
+    The number of a transformer impedance correction record if this transformer winding’s
     impedance is to be a function of either off-nominal turns ratio or phase shift angle,
     or 0 if no transformer impedance correction is to be applied to this transformer winding.
+    See [`ImpedanceCorrections`](@ref).
     `tab2` = 0 by default.
     _Ignored for a two-winding transformer._
     """
@@ -932,9 +934,10 @@ struct Transformers <: Records
     """
     ntp3::Vector{Union{Int16, Missing}}
     """
-    The number of a transformer impedance correction table if this transformer winding’s
+    The number of a transformer impedance correction record if this transformer winding’s
     impedance is to be a function of either off-nominal turns ratio or phase shift angle,
     or 0 if no transformer impedance correction is to be applied to this transformer winding.
+    See [`ImpedanceCorrections`](@ref).
     `tab3` = 0 by default.
     _Ignored for a two-winding transformer._
     """
@@ -1656,6 +1659,68 @@ struct SwitchedShunts <: Records
     b8::Vector{Float64}
 end
 
+"""
+    $TYPEDEF
+
+Transformer impedance corrections are used to model a change of transformer impedance
+as off-nominal turns ratio or phase shift angle is adjusted.
+
+The ``T_i`` values on a transformer impedance correction record must all be either tap
+ratios or phase shift angles. They must be entered in strictly ascending order;
+i.e. for each ``i``, ``T_{i+1} > T_i``. Each ``F_i`` entered must be greater than zero.
+
+On each record, at least 2 pairs of values must be specified and up to 11 may be entered.
+
+The ``T_i`` values that are a function of tap ratio (rather than phase shift angle)
+are in units of the controlling winding’s off-nominal turns ratio in pu of the controlling
+winding’s bus base voltage.
+
+Although a transformer winding is assigned to an impedance correction record, each record may
+be shared among many transformer windings. If the first ``T`` in a record is less than 0.5 or
+the last ``T`` entered is greater than 1.5, ``T`` is assumed to be the phase shift angle and
+the impedance of each transformer winding assigned to the record is treated as a function of
+phase shift angle. Otherwise, the impedances of the transformer windings assigned to the record
+are made sensitive to off-nominal turns ratio.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct ImpedanceCorrections <: Records
+    "Impedance correction record number."
+    i::Vector{Int16}
+    """
+    Either off-nominal turns ratio in pu or phase shift angle in degrees.
+    `ti` = 0.0 by default.
+    """
+    t1::Vector{Float64}
+    """
+    Scaling factor by which transformer nominal impedance is to be multiplied to obtain the
+    actual transformer impedance for the corresponding `ti`.
+    `fi` = 0.0 by default.
+    """
+    f1::Vector{Float64}
+    t2::Vector{Float64}
+    f2::Vector{Float64}
+    t3::Vector{Float64}
+    f3::Vector{Float64}
+    t4::Vector{Float64}
+    f4::Vector{Float64}
+    t5::Vector{Float64}
+    f5::Vector{Float64}
+    t6::Vector{Float64}
+    f6::Vector{Float64}
+    t7::Vector{Float64}
+    f7::Vector{Float64}
+    t8::Vector{Float64}
+    f8::Vector{Float64}
+    t9::Vector{Float64}
+    f9::Vector{Float64}
+    t10::Vector{Float64}
+    f10::Vector{Float64}
+    t11::Vector{Float64}
+    f11::Vector{Float64}
+end
+
 ###
 ### Network
 ###
@@ -1718,6 +1783,8 @@ struct Network
     vsc_dc::VSCDCLines
     "Switched Shunt records."
     switched_shunts::SwitchedShunts
+    "Transformer impedance correction records."
+    impedance_corrections::ImpedanceCorrections
 end
 
 ###

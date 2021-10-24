@@ -57,8 +57,11 @@ function parse_network(source)
     vsc_dc, pos = parse_records!(VSCDCLines(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed VSCDCLines: nrows = $(length(vsc_dc)), pos = $pos"
 
-    switched_shunts, pos = parse_records!(SwitchedShunts(), bytes, pos, len, OPTIONS)
+    switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
+
+    impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed ImpedanceCorrections: nrows = $(length(impedance_corrections)), pos = $pos"
 
     return Network(
         caseid,
@@ -71,6 +74,7 @@ function parse_network(source)
         two_terminal_dc,
         vsc_dc,
         switched_shunts,
+        impedance_corrections,
     )
 end
 
@@ -213,19 +217,28 @@ end
 ### SwitchedShunts
 ###
 
-# SwitchedShunts can have anywhere between 1 - 8 `N` and `B` values in the data itself,
-# if n2, b2, ..., n8, b8 are not present, we set them to zero.
-@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: SwitchedShunts}
+const N_SPECIAL = IdDict(
+    # SwitchedShunts can have anywhere between 1 - 8 `N` and `B` values in the data itself,
+    # if n2, b2, ..., n8, b8 are not present, we set them to zero.
+    # i.e. the last 14 = 7(n) + 7(b) columns reqire special handling.
+    SwitchedShunts => 14,
+    # SwitchedShunts can have anywhere between 2 - 11 `T` and `F` values in the data itself,
+    # if t3, f3, ..., t11, f11 are not present, we set them to zero.
+    # i.e. the last 18 = 9(t) + 9(f) columns reqire special handling.
+    ImpedanceCorrections => 18,
+)
+
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections}}
     block = Expr(:block)
-    N = fieldcount(R) - 14  # the last 14 = 7(N) + 7(B) columns reqire special handling.
+    N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
     coln = N + 1
     colb = N + 2
-    for _ in 2:8  # parse n2, b2, ..., n8, b8
-        Tn = eltype(fieldtype(SwitchedShunts, coln))
-        Tb = eltype(fieldtype(SwitchedShunts, colb))
+    for _ in 1:(N_SPECIAL[R] ÷ 2)
+        Tn = eltype(fieldtype(R, coln))
+        Tb = eltype(fieldtype(R, colb))
         push!(block.args, :(
-            if newline(code)  # TODO: improve on checking `newline` 7 times?
+            if newline(code)  # TODO: improve on checking `newline` multiple times?
                 push!(getfield(rec, $coln), zero($Tn))
                 push!(getfield(rec, $colb), zero($Tb))
             else
