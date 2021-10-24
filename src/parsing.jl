@@ -63,8 +63,12 @@ function parse_network(source)
     impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed ImpedanceCorrections: nrows = $(length(impedance_corrections)), pos = $pos"
 
+    # Skip these for now...
     multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines(), bytes, pos, len, OPTIONS)
     multi_section_lines, pos = parse_records!(MultiSectionLineGroups(), bytes, pos, len, OPTIONS)
+
+    zones, pos = parse_records!(Zones(), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed Zones: nrows = $(length(zones)), pos = $pos"
 
     return Network(
         caseid,
@@ -78,6 +82,7 @@ function parse_network(source)
         vsc_dc,
         switched_shunts,
         impedance_corrections,
+        zones,
     )
 end
 

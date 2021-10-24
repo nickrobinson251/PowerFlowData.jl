@@ -103,7 +103,10 @@ struct Buses <: Records
     bl::Vector{Float64}
     "Area number. 1 through the maximum number of areas at the current size level."
     area::Vector{AreaNum}
-    "Zone number. 1 through the maximum number of zones at the current size level."
+    """
+    Zone number. 1 through the maximum number of zones at the current size level.
+    See [`Zones`](@ref).
+    """
     zone::Vector{ZoneNum}
     "Bus voltage magnitude; entered in pu."
     vm::Vector{Float64}
@@ -136,7 +139,10 @@ struct Loads <: Records
     status::Vector{Bool}
     "Area to which the load is assigned (1 through the maximum number of areas at the current size level)."
     area::Vector{AreaNum}
-    "Zone to which the load is assigned (1 through the maximum number of zones at the current size level)."
+    """
+    Zone to which the load is assigned (1 through the maximum number of zones at the current size level).
+    See [`Zones`](@ref).
+    """
     zone::Vector{ZoneNum}
     "Active power component of constant MVA load; entered in MW."
     pl::Vector{Float64}
@@ -1725,6 +1731,30 @@ end
 struct MultiTerminalDCLines <: Records end
 struct MultiSectionLineGroups <: Records end
 
+"""
+    $TYPEDEF
+
+All buses (AC and DC) and loads can be assigned to reside in a zone of the network.
+To enable this facility, each zone should be assigned a name and number.
+Specifically, the zone number is entered as part of the data records for the [`Buses`](@ref) and [`Loads`](@ref).
+The use of zones enables the user to develop reports and to check results on the basis of zones and,
+consequently be highly specific when reporting and interpreting analytical results.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct Zones <: Records
+    "Zone number (1 through the maximum number of zones at the current size level)"
+    i::Vector{ZoneNum}
+    """
+    Alphanumeric identifier assigned to zone `i`.
+    The name may contain up to twelve characters and must be enclosed in single quotes.
+    `zoname` may be any combination of blanks, uppercase letters, numbers, and special characters.
+    `zoname` is set to twelve blanks by default.
+    """
+    zoname::Vector{InlineString15}
+end
+
 ###
 ### Network
 ###
@@ -1750,6 +1780,7 @@ Currently supported are:
 1. [`TwoTerminalDCLines`](@ref)
 1. [`VSCDCLines`](@ref)
 1. [`SwitchedShunts`](@ref)
+1. [`Zones`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
@@ -1789,6 +1820,8 @@ struct Network
     switched_shunts::SwitchedShunts
     "Transformer impedance correction records."
     impedance_corrections::ImpedanceCorrections
+    "Zone records."
+    zones::Zones
 end
 
 ###

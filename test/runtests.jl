@@ -63,7 +63,7 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 11 data categories:
+            Network with 12 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -75,6 +75,7 @@ using Test
              $(sprint(show, mime, net.vsc_dc; context))
              $(sprint(show, mime, net.switched_shunts; context))
              $(sprint(show, mime, net.impedance_corrections; context))
+             $(sprint(show, mime, net.zones; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -168,6 +169,10 @@ using Test
         impedance_corrections = net1.impedance_corrections
         @test impedance_corrections.i == [1]       # first col
         @test impedance_corrections.f11 == [0.0]   # last col; `f11` not present; default to zero
+
+        zones = net1.zones
+        @test zones.i == [117, 127, 227]
+        @test zones.zoname == ["ABC ", "CDEF", " CDEG "]
     end
 
     @testset "v29 file" begin
@@ -245,6 +250,10 @@ using Test
         impedance_corrections = net2.impedance_corrections
         @test impedance_corrections.i == [1, 2]          # first col
         @test impedance_corrections.f11 == [3.34, 1.129] # last col
+
+        zones = net2.zones
+        @test zones.i == [1, 9]
+        @test zones.zoname == ["ABL         ", "EFGN        "]
     end
 
     @testset "issues" begin
