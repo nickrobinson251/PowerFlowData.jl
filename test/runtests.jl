@@ -246,4 +246,10 @@ using Test
         @test impedance_corrections.i == [1, 2]          # first col
         @test impedance_corrections.f11 == [3.34, 1.129] # last col
     end
+
+    @testset "issues" begin
+        net = parse_network("testfiles/spacezero.raw")
+        @test length(net.buses) == 2
+        @test length(net.loads) == 1
+    end
 end
