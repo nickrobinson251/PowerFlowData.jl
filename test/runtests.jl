@@ -63,7 +63,7 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 13 data categories:
+            Network with 14 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -77,6 +77,7 @@ using Test
              $(sprint(show, mime, net.impedance_corrections; context))
              $(sprint(show, mime, net.zones; context))
              $(sprint(show, mime, net.area_transfers; context))
+             $(sprint(show, mime, net.owners; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -178,6 +179,10 @@ using Test
         area_transfers = net1.area_transfers
         @test area_transfers.arfrom == [1, 1]
         @test area_transfers.ptran == [10.0, -20.0]
+
+        owners = net1.owners
+        @test owners.i == [1, 2]
+        @test owners.owname == ["      ABC   ", "      CDE  "]
     end
 
     @testset "v29 file" begin
@@ -262,6 +267,10 @@ using Test
 
         area_transfers = net2.area_transfers
         @test isempty(area_transfers)
+
+        owners = net2.owners
+        @test owners.i == [1, 2]
+        @test owners.owname == ["      EAI   ", "      OUYK  "]
     end
 
     @testset "issues" begin

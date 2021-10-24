@@ -11,7 +11,7 @@ export parse_network
 export Network
 export CaseID, Buses, Loads, Generators, Branches, Transformers, AreaInterchanges
 export TwoTerminalDCLines, VSCDCLines, SwitchedShunts, ImpedanceCorrections
-export Zones, InterAreaTransfers
+export Zones, InterAreaTransfers, Owners
 
 include("debug.jl")
 include("types.jl")
