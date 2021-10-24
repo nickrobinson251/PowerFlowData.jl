@@ -10,7 +10,7 @@ using Tables
 export parse_network
 export Network
 export CaseID, Buses, Loads, Generators, Branches, Transformers, AreaInterchanges
-export TwoTerminalDCLines, VSCDCLines
+export TwoTerminalDCLines, VSCDCLines, SwitchedShunts
 
 include("debug.jl")
 include("types.jl")

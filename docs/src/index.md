@@ -51,6 +51,7 @@ Transformers
 AreaInterchanges
 TwoTerminalDCLines
 VSCDCLines
+SwitchedShunts
 ```
 
 ## Alternatives
