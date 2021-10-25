@@ -1819,6 +1819,124 @@ struct Owners <: Records
     owname::Vector{InlineString15}
 end
 
+"""
+    $TYPEDEF
+
+Flexible AC Transmission System devices.
+
+There is a multiplicity of Flexible AC Transmission System devices currently available
+comprising shunt devices, such as the Static Compensator (STATCOM), series devices such as
+the Static Synchronous Series Compensator (SSSC), combined devices such as the
+Unified Power Flow Controller (UPFC) and the Interline Power Flow Controllers (IPFC),
+of which the latter are parallel series devices.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct FACTSDevices <: Records
+    "FACTS device number."
+    n::Vector{Int16}
+    """
+    Sending end bus number, or extended bus name enclosed in single quotes.
+    No default.
+    """
+    i::Vector{BusNum}
+    """
+    Terminal end bus number, or extended bus name enclosed in single quotes.
+    0 for a STATCON.
+    `j` = 0 by default.
+    """
+    j::Vector{BusNum}
+    """
+    Control mode:
+    * 0 - out-of-service (i.e., series and shunt links open).
+    * 1 - series and shunt links operating.
+    * 2 - series link bypassed (i.e., like a zero impedance line) and shunt link operating as a STATCON.
+    * 3 - seriesandshuntlinksoperatingwithserieslinkatconstantseriesimpedance.
+    * 4 - series and shunt links operating with series link at constant series voltage.
+    * 5 - master device of an IPFC with P and Q setpoints specified;
+        FACTS device N+1 must be the slave device (i.e., its `mode` is 6 or 8) of this IPFC.
+    * 6 - slave device of an IPFC with P and Q setpoints specified;
+        FACTS device N-1 must be the master device (i.e., its `mode` is 5 or 7) of this IPFC.
+        The Q setpoint is ignored as the master device dictates the active power exchanged between the two devices.
+    * 7 - master device of an IPFC with constant series voltage setpoints specified;
+        FACTS device N+1 must be the slave device (i.e., its `mode` is 6 or 8) of this IPFC.
+    * 8 - slave device of an IPFC with constant series voltage setpoints specified;
+        FACTS device N-1 must be the master device (i.e., its `mode` is 5 or 7) of this IPFC.
+        The complex ``V_d + j V_q`` setpoint is modified during power flow solutions to reflect
+        the active power exchange determined by the master device.
+    If `j` is specified as 0, `mode` must be either 0 or 1.
+    `mode` = 1 by default.
+    """
+    mode::Vector{Int8}
+    """
+    Desired active power flow arriving at the terminal end bus; entered in MW.
+    `pdes` = 0.0 by default.
+    """
+    pdes::Vector{Float64}
+    """
+    Desired reactive power flow arriving at the terminal end bus; entered in MVAR.
+    `qdes` = 0.0 by default.
+    """
+    qdes::Vector{Float64}
+    "Voltage setpoint at the sending end bus; entered in pu. `vset` = 1.0 by default."
+    vset::Vector{Float64}
+    """
+    Maximum shunt current at the sending end bus; entered in MVA at unity voltage.
+    `shmx` = 9999.0 by default.
+    """
+    shmx::Vector{Float64}
+    "Maximum bridge active power transfer; entered in MW. `trmx` = 9999.0 by default."
+    trmx::Vector{Float64}
+    "Minimum voltage at the terminal end bus; entered in pu. `vtmn` = 0.9 by default."
+    vtmn::Vector{Float64}
+    "Maximum voltage at the terminal end bus; entered in pu. `vtmx` = 1.1 by default."
+    vtmx::Vector{Float64}
+    "Maximum series voltage; entered in pu. `vsmx` = 1.0 by default."
+    vsmx::Vector{Float64}
+    """
+    Maximum series current, or zero for no series current limit; entered in MVA at unity voltage.
+    `imx` = 0.0 by default.
+    """
+    imx::Vector{Float64}
+    """
+    Reactance of the dummy series element used during model solution; entered in pu.
+    `linx` = 0.05 by default.
+    """
+    linx::Vector{Float64}
+    """
+    Percent of the total Mvar required to hold the voltage at bus `i` that are to be contributed
+    by the shunt element of this FACTS device; `rmpct` must be positive.
+    `rmpct` is needed only if there is more than one local or remote voltage controlling device
+    (plant, switched shunt, FACTS device shunt element, or VSC dc line converter) controlling
+    the voltage at bus `i` to a setpoint. `rmpct` = 100.0 by default.
+    """
+    rmpct::Vector{Float64}
+    """
+    Owner number (1 through the maximum number of owners at the current size level).
+    `owner` = 1 by default.
+    """
+    owner::Vector{OwnerNum}
+    """
+    If `mode` is 3, resistance and reactance respectively of the constant impedance, entered in pu;
+    if `mode` is 4, the magnitude (in pu) and angle (in degrees) of the constant series voltage
+    with respect to the quantity indicated by `vsref`;
+    if `mode` is 7 or 8, the real (vd) and imaginary (vq) components (in pu) of the constant
+    series voltage with respect to the quantity indicated by `vsref`;
+    for other values of `mode`, `set1` and set2 are read, but not saved or used during power flow solutions.
+    `set1` = 0.0 by default.
+    """
+    set1::Vector{Float64}
+    "See `set1`. `set2` = 0.0 by default."
+    set2::Vector{Float64}
+    """
+    Series voltage reference code to indicate the series voltage reference of `set1` and `set2`
+    when `mode` is 4, 7 or 8: 0 for sending end voltage, 1 for series current.
+    `vsref` = 0 by default.
+    """
+    vsref::Vector{Int8}  # 0 or 1... i think
+end
+
 ###
 ### Network
 ###
@@ -1848,6 +1966,7 @@ Currently supported are:
 1. [`Zones`](@ref)
 1. [`InterAreaTransfers`](@ref)
 1. [`Owners`](@ref)
+1. [`FACTSDevices`](@ref)
 
 `CaseID` data is a single row (in the Tables.jl-sense).
 You can access it like `network.caseid` and interact with it like a `NamedTuple`,
@@ -1889,10 +2008,12 @@ struct Network
     impedance_corrections::ImpedanceCorrections
     "Zone records."
     zones::Zones
-    "Inter-area tranfer records."
+    "Inter-area transfer records."
     area_transfers::InterAreaTransfers
     "Owner records."
     owners::Owners
+    "FACTS device records."
+    facts::FACTSDevices
 end
 
 ###

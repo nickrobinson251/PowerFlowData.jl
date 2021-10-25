@@ -76,6 +76,9 @@ function parse_network(source)
     owners, pos = parse_records!(Owners(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Owners: nrows = $(length(owners)), pos = $pos"
 
+    facts, pos = parse_records!(FACTSDevices(), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed FACTSDevices: nrows = $(length(facts)), pos = $pos"
+
     return Network(
         caseid,
         buses,
@@ -91,6 +94,7 @@ function parse_network(source)
         zones,
         area_transfers,
         owners,
+        facts,
     )
 end
 

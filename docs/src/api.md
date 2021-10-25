@@ -78,3 +78,8 @@ InterAreaTransfers
 ```@docs
 Owners
 ```
+
+## FACTS Devices
+```@docs
+FACTSDevices
+```
