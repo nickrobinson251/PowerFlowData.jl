@@ -64,7 +64,7 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 15 data categories:
+            Network with 16 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -76,6 +76,7 @@ using Test
              $(sprint(show, mime, net.vsc_dc; context))
              $(sprint(show, mime, net.switched_shunts; context))
              $(sprint(show, mime, net.impedance_corrections; context))
+             $(sprint(show, mime, net.multi_section_lines; context))
              $(sprint(show, mime, net.zones; context))
              $(sprint(show, mime, net.area_transfers; context))
              $(sprint(show, mime, net.owners; context))
@@ -174,6 +175,12 @@ using Test
         @test impedance_corrections.i == [1]       # first col
         @test impedance_corrections.f11 == [0.0]   # last col; `f11` not present; default to zero
 
+        multi_section_lines = net1.multi_section_lines
+        @test multi_section_lines.i == [1, 114]                     # first col
+        @test multi_section_lines.id == ["&1", "&2"]                # string col
+        @test isequal(multi_section_lines.dum2, [missing, 5])       # `dum2` present only for 1 row of the data
+        @test isequal(multi_section_lines.dum9, [missing, missing]) # last col; not present; default to missing
+
         zones = net1.zones
         @test zones.i == [117, 127, 227]
         @test zones.zoname == ["ABC ", "CDEF", " CDEG "]
@@ -266,6 +273,9 @@ using Test
         impedance_corrections = net2.impedance_corrections
         @test impedance_corrections.i == [1, 2]          # first col
         @test impedance_corrections.f11 == [3.34, 1.129] # last col
+
+        multi_section_lines = net2.multi_section_lines
+        @test isempty(multi_section_lines)
 
         zones = net2.zones
         @test zones.i == [1, 9]

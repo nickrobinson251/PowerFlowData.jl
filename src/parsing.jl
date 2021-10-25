@@ -65,7 +65,9 @@ function parse_network(source)
 
     # Skip these for now...
     multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines(), bytes, pos, len, OPTIONS)
+
     multi_section_lines, pos = parse_records!(MultiSectionLineGroups(), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed MultiSectionLineGroups: nrows = $(length(multi_section_lines)), pos = $pos"
 
     zones, pos = parse_records!(Zones(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Zones: nrows = $(length(zones)), pos = $pos"
@@ -91,6 +93,7 @@ function parse_network(source)
         vsc_dc,
         switched_shunts,
         impedance_corrections,
+        multi_section_lines,
         zones,
         area_transfers,
         owners,
@@ -238,7 +241,7 @@ end
 end
 
 ###
-### SwitchedShunts
+### SwitchedShunts, ImpedanceCorrections
 ###
 
 const N_SPECIAL = IdDict(
@@ -272,6 +275,29 @@ const N_SPECIAL = IdDict(
         ))
         coln += 2
         colb += 2
+    end
+    push!(block.args, :(return rec, pos))
+    # @show block
+    return block
+end
+
+###
+### MultiSectionLineGroups
+###
+
+# There can be between 1 - 9 DUM_i columns
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiSectionLineGroups}
+    block = Expr(:block)
+    append!(block.args, _parse_values(R, 1, 4))  # I, J, ID, DUM1
+    for col in 5:fieldcount(R)
+        T = eltype(fieldtype(R, col))
+        push!(block.args, :(
+            if newline(code)  # TODO: improve on checking `newline` multiple times?
+                push!(getfield(rec, $col), missing)
+            else
+                (rec, pos, code) = parse_value!(rec, $col, $T, bytes, pos, len, options)
+            end
+        ))
     end
     push!(block.args, :(return rec, pos))
     # @show block
