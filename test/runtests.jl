@@ -38,8 +38,9 @@ using Test
         @test size(df) == (3, 2)
 
         for T in (
-            Buses, Loads, Generators, Branches, Transformers, AreaInterchanges, VSCDCLines,
-            SwitchedShunts
+            Buses, Loads, Generators, Branches, Transformers, AreaInterchanges,
+            TwoTerminalDCLines, VSCDCLines, SwitchedShunts, ImpedanceCorrections, Zones,
+            InterAreaTransfers, Owners, FACTSDevices
         )
             @test T <: PowerFlowData.Records
             @test Tables.istable(T)
@@ -63,7 +64,7 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 14 data categories:
+            Network with 15 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -78,6 +79,7 @@ using Test
              $(sprint(show, mime, net.zones; context))
              $(sprint(show, mime, net.area_transfers; context))
              $(sprint(show, mime, net.owners; context))
+             $(sprint(show, mime, net.facts; context))
             """
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
@@ -183,6 +185,10 @@ using Test
         owners = net1.owners
         @test owners.i == [1, 2]
         @test owners.owname == ["      ABC   ", "      CDE  "]
+
+        facts = net1.facts
+        @test facts.n == [1]
+        @test facts.vsref == [0]
     end
 
     @testset "v29 file" begin
@@ -271,6 +277,9 @@ using Test
         owners = net2.owners
         @test owners.i == [1, 2]
         @test owners.owname == ["      EAI   ", "      OUYK  "]
+
+        facts = net2.facts
+        @test isempty(facts)
     end
 
     @testset "issues" begin
