@@ -1771,7 +1771,7 @@ For a multi-section line grouping consisting of three line sections (and hence t
 If this multi-section line grouping is to be assigned the line identifier `id` "&1",
 the corresponding multi-section line grouping data record is given by:
 ```
-I, J, &1, D1, D2
+I, J, '&1', D1, D2
 ```
 
 ## Notes
