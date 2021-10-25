@@ -1739,9 +1739,87 @@ struct ImpedanceCorrections <: Records
     f11::Vector{Float64}
 end
 
-# Stubs as we don't yet parse this data
+# Stub as we don't yet parse this data
 struct MultiTerminalDCLines <: Records end
-struct MultiSectionLineGroups <: Records end
+
+"""
+    $TYPEDEF
+
+Multi-section line groups.
+
+Transmission lines commonly have a series of sections with varying physical structures.
+The section might have different tower configurations, conductor types and bundles or various
+combinations of these. The physical differences can result in the sections having different
+resistance, reactance and charging.
+
+A transmission line with several distinct sections can be represented as one
+multi-section line group.
+
+The DUM_i values on each record define the branches connecting bus `i` to bus `j`, and
+are entered so as to trace the path from bus `i` to bus `j`.
+
+## Example
+
+For a multi-section line grouping consisting of three line sections (and hence two dummy buses):
+
+| From | To | Circuit |
+|------|----|---------|
+|    I | D1 |      C1 |
+|   D1 | D2 |      C2 |
+|   D2 |  J |      C3 |
+
+If this multi-section line grouping is to be assigned the line identifier `id` "&1",
+the corresponding multi-section line grouping data record is given by:
+```
+I, J, '&1', D1, D2
+```
+
+## Notes
+
+The following notes apply to multi-section line groups:
+* Up to 10 line sections (and hence 9 dummy buses) may be defined in each multi-section line grouping.
+  A branch may be a line section of at most one multi-section line grouping.
+* Each dummy bus must have exactly two branches connected to it,
+  both of which must be members of the same multi-section line grouping.
+  A multi-section line dummy bus may not be a converter bus of a DC transmission line.
+  A FACTS control device may not be connected to a multi-section line dummy bus.
+* The status of line sections and type codes of dummy buses are set such that the multi-section
+  line is treated as a single entity with regards to its service status.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct MultiSectionLineGroups <: Records
+    "\"From bus\" number, or extended bus name enclosed in single quotes."
+    i::Vector{BusNum}
+    """
+    "To bus" number, or extended bus name enclosed in single quotes.
+    `j` is entered as a negative number or with a minus sign before the first character of
+    the extended bus name to designate it as the metered end;
+    otherwise, bus `i` is assumed to be the metered end.
+    """
+    j::Vector{BusNum}
+    """
+    Two-character upper-case alphanumeric multi-section line grouping identifier.
+    The first character must be an ampersand ("&").
+    `id` = "&1" by default.
+    """
+    id::Vector{InlineString3}
+    """
+    Bus numbers, or extended bus names enclosed in single quotes, of the dummy buses
+    connected by the branches that comprise this multi-section line grouping.
+    No defaults.
+    """
+    dum1::Vector{BusNum}
+    dum2::Vector{Union{BusNum,Missing}}
+    dum3::Vector{Union{BusNum,Missing}}
+    dum4::Vector{Union{BusNum,Missing}}
+    dum5::Vector{Union{BusNum,Missing}}
+    dum6::Vector{Union{BusNum,Missing}}
+    dum7::Vector{Union{BusNum,Missing}}
+    dum8::Vector{Union{BusNum,Missing}}
+    dum9::Vector{Union{BusNum,Missing}}
+end
 
 """
     $TYPEDEF
@@ -1963,6 +2041,7 @@ Currently supported are:
 1. [`VSCDCLines`](@ref)
 1. [`SwitchedShunts`](@ref)
 1. [`ImpedanceCorrections`](@ref)
+1. [`MultiSectionLineGroups`](@ref)
 1. [`Zones`](@ref)
 1. [`InterAreaTransfers`](@ref)
 1. [`Owners`](@ref)
@@ -2006,6 +2085,8 @@ struct Network
     switched_shunts::SwitchedShunts
     "Transformer impedance correction records."
     impedance_corrections::ImpedanceCorrections
+    "Multi-section line group records."
+    multi_section_lines::MultiSectionLineGroups
     "Zone records."
     zones::Zones
     "Inter-area transfer records."

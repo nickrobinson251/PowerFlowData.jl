@@ -64,6 +64,11 @@ SwitchedShunts
 ImpedanceCorrections
 ```
 
+## Multi-Section Line Groups
+```@docs
+MultiSectionLineGroups
+```
+
 ## Zones
 ```@docs
 Zones
