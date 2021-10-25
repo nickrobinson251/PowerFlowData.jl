@@ -64,6 +64,16 @@ SwitchedShunts
 ImpedanceCorrections
 ```
 
+## Multi-Terminal DC Lines
+```@docs
+MultiTerminalDCLines
+MultiTerminalDCLine
+DCLine
+Converters
+DCBuses
+DCLinks
+```
+
 ## Multi-Section Line Groups
 ```@docs
 MultiSectionLineGroups

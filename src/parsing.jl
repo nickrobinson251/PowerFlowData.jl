@@ -63,8 +63,8 @@ function parse_network(source)
     impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed ImpedanceCorrections: nrows = $(length(impedance_corrections)), pos = $pos"
 
-    # Skip these for now...
     multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines(), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed MultiTerminalDCLines: nrows = $(length(multi_terminal_dc)), pos = $pos"
 
     multi_section_lines, pos = parse_records!(MultiSectionLineGroups(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed MultiSectionLineGroups: nrows = $(length(multi_section_lines)), pos = $pos"
@@ -93,6 +93,7 @@ function parse_network(source)
         vsc_dc,
         switched_shunts,
         impedance_corrections,
+        multi_terminal_dc,
         multi_section_lines,
         zones,
         area_transfers,
@@ -300,6 +301,51 @@ end
         ))
     end
     push!(block.args, :(return rec, pos))
+    # @show block
+    return block
+end
+
+###
+### MultiTerminalDCLines
+###
+
+function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiTerminalDCLines}
+    dc_line, pos = parse_dcline(bytes, pos, len, options)
+
+    nconv = dc_line.nconv
+    converters = Converters(nconv)
+    for _ in 1:nconv
+        converters, pos = parse_row!(converters, bytes, pos, len, options)
+    end
+
+    ndcbs = dc_line.ndcbs
+    dc_buses = DCBuses(ndcbs)
+    for _ in 1:ndcbs
+        dc_buses, pos = parse_row!(dc_buses, bytes, pos, len, options)
+    end
+
+    ndcln = dc_line.ndcln
+    dc_links = DCLinks(ndcln)
+    for _ in 1:ndcln
+        dc_links, pos = parse_row!(dc_links, bytes, pos, len, options)
+    end
+    line = MultiTerminalDCLine(dc_line, converters, dc_buses, dc_links)
+    push!(rec.lines, line)
+    return rec, pos
+end
+
+@generated function parse_dcline(bytes, pos, len, options)
+    block = Expr(:block)
+    nfields = fieldcount(DCLine)
+    for i in 1:fieldcount(DCLine)
+        T = fieldtype(DCLine, i)
+        val_i = Symbol(:val, i)
+        push!(block.args, :(($val_i, pos, code) = parse_value($T, bytes, pos, len, options)))
+    end
+    push!(block.args, quote
+        args = Tuple{$(fieldtypes(DCLine)...)}([$((Symbol(:val, i) for i in 1:nfields)...)])
+        return DCLine(args...), pos
+    end)
     # @show block
     return block
 end
