@@ -1791,26 +1791,26 @@ $TYPEDFIELDS
 """
 struct MultiSectionLineGroups <: Records
     "\"From bus\" number, or extended bus name enclosed in single quotes."
-	i::Vector{BusNum}
+    i::Vector{BusNum}
     """
     "To bus" number, or extended bus name enclosed in single quotes.
     `j` is entered as a negative number or with a minus sign before the first character of
     the extended bus name to designate it as the metered end;
     otherwise, bus `i` is assumed to be the metered end.
     """
-	j::Vector{BusNum}
+    j::Vector{BusNum}
     """
     Two-character upper-case alphanumeric multi-section line grouping identifier.
     The first character must be an ampersand ("&").
     `id` = "&1" by default.
     """
-	id::Vector{InlineString3}
+    id::Vector{InlineString3}
     """
     Bus numbers, or extended bus names enclosed in single quotes, of the dummy buses
     connected by the branches that comprise this multi-section line grouping.
     No defaults.
     """
-	dum1::Vector{BusNum}
+    dum1::Vector{BusNum}
     dum2::Vector{Union{BusNum,Missing}}
     dum3::Vector{Union{BusNum,Missing}}
     dum4::Vector{Union{BusNum,Missing}}
