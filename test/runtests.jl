@@ -1,5 +1,6 @@
 using DataFrames
 using InteractiveUtils: subtypes
+using InlineStrings: InlineStrings  # for `eval(repr(...))`
 using PowerFlowData
 using Tables
 using Test
@@ -56,7 +57,8 @@ using Test
     end
 
     @testset "show" begin
-        net = parse_network("testfiles/synthetic_data_v30.raw")
+        # test of file which has MultiTerminalDCLines as they have their own `show`.
+        net = parse_network("testfiles/synthetic_data_v29.raw")
 
         # CaseID should have a parseable `repr`; `AbstractRows` don't get this for free.
         @test repr(net.caseid) == "CaseID(ic = 0, sbase = 100.0)"
@@ -89,8 +91,21 @@ using Test
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
 
-        @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 3 records"
-        @test startswith(repr(mime, net.buses), "Buses with 3 records, 11 columns:\n──")
+        @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 2 records"
+        @test startswith(repr(mime, net.buses), "Buses with 2 records, 11 columns:\n──")
+
+        mt_dc_line = net.multi_terminal_dc.lines[1]
+        @test eval(Meta.parse(repr(mt_dc_line))) isa MultiTerminalDCLine
+        @test repr(mime, mt_dc_line) == strip(
+            """
+            $(sprint(show, mime, mt_dc_line.line))
+            $(sprint(show, mime, mt_dc_line.converters))
+            $(sprint(show, mime, mt_dc_line.buses))
+            $(sprint(show, mime, mt_dc_line.links))
+            """
+        )
+        dc_line = mt_dc_line.line
+        @test eval(Meta.parse(repr(dc_line))) isa DCLine
     end
 
     @testset "v30 file" begin

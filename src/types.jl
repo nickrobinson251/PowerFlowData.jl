@@ -2377,7 +2377,7 @@ function Base.show(io::IO, mime::MIME"text/plain", dcline::T) where {T <: MultiT
     get(io, :compact, false)::Bool && return nothing
     nfields = fieldcount(T)
     foreach(2:nfields) do i
-        print(io, "\n ")
+        print(io, "\n")
         show(io, mime, getfield(dcline, i))
     end
     return nothing
