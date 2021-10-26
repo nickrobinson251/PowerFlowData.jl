@@ -310,10 +310,10 @@ end
 ###
 
 function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiTerminalDCLines}
-    dc_line, pos = parse_dcline(bytes, pos, len, options)
+    dc_line, pos = parse_dclineid(bytes, pos, len, options)
 
     nconv = dc_line.nconv
-    converters = Converters(nconv)
+    converters = ACConverters(nconv)
     for _ in 1:nconv
         converters, pos = parse_row!(converters, bytes, pos, len, options)
     end
@@ -334,17 +334,17 @@ function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiTerminalD
     return rec, pos
 end
 
-@generated function parse_dcline(bytes, pos, len, options)
+@generated function parse_dclineid(bytes, pos, len, options)
     block = Expr(:block)
-    nfields = fieldcount(DCLine)
-    for i in 1:fieldcount(DCLine)
-        T = fieldtype(DCLine, i)
+    nfields = fieldcount(DCLineID)
+    for i in 1:fieldcount(DCLineID)
+        T = fieldtype(DCLineID, i)
         val_i = Symbol(:val, i)
         push!(block.args, :(($val_i, pos, code) = parse_value($T, bytes, pos, len, options)))
     end
     push!(block.args, quote
-        args = Tuple{$(fieldtypes(DCLine)...)}([$((Symbol(:val, i) for i in 1:nfields)...)])
-        return DCLine(args...), pos
+        args = Tuple{$(fieldtypes(DCLineID)...)}([$((Symbol(:val, i) for i in 1:nfields)...)])
+        return DCLineID(args...), pos
     end)
     # @show block
     return block

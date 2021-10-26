@@ -103,7 +103,7 @@ using Test
             """
         )
         dc_line = mt_dc_line.line
-        @test eval(Meta.parse(repr(dc_line))) isa DCLine
+        @test eval(Meta.parse(repr(dc_line))) isa DCLineID
     end
 
     @testset "v30 file" begin

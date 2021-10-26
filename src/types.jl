@@ -1754,7 +1754,7 @@ end
 # - arbitrary number of rows about the links
 # So we treat `MultiTerminalDCLines` as a single column table, where each value is a
 # dedicated `MultiTerminalDCLine` object. And each `MultiTerminalDCLine` is a bit like a
-# `Network`, with a `DCLine` (`CaseID`) and 3 `Records` (`Converters, `DCBuses`, `DCLinks`)
+# `Network`, with a `DCLineID` (`CaseID`) and 3 `Records` (`ACConverters, `DCBuses`, `DCLinks`)
 
 """
 	$TYPEDEF
@@ -1762,7 +1762,7 @@ end
 # Fields
 $TYPEDFIELDS
 """
-struct DCLine <: IDRow
+struct DCLineID <: IDRow
     "Multi-terminal DC line number."
     i::LineNum
     "Number of AC converter station buses in multi-terminal DC line `i`. No default."
@@ -1804,11 +1804,11 @@ struct DCLine <: IDRow
 end
 
 # Accept arguments as keywords  to get both a `repr` that's both pretty and parseable.
-DCLine(; kwargs...) = DCLine(values(kwargs)...)
+DCLineID(; kwargs...) = DCLineID(values(kwargs)...)
 
-Tables.columnnames(::DCLine) = fieldnames(DCLine)
-Tables.getcolumn(dcln::DCLine, i::Int) = getfield(dcln, i)
-Tables.getcolumn(dcln::DCLine, nm::Symbol) = getfield(dcln, nm)
+Tables.columnnames(::DCLineID) = fieldnames(DCLineID)
+Tables.getcolumn(dcln::DCLineID, i::Int) = getfield(dcln, i)
+Tables.getcolumn(dcln::DCLineID, nm::Symbol) = getfield(dcln, nm)
 
 """
 	$TYPEDEF
@@ -1816,7 +1816,7 @@ Tables.getcolumn(dcln::DCLine, nm::Symbol) = getfield(dcln, nm)
 # Fields
 $TYPEDFIELDS
 """
-struct Converters <: Records
+struct ACConverters <: Records
     """
     AC converter bus number, or extended bus name enclosed in single quotes.
     No default.
@@ -1968,9 +1968,9 @@ end
 	$TYPEDEF
 
 Each multi-terminal DC line record defines the number of converters, number of DC buses and
-number of DC links as well as related bus numbers and control mode (see [`DCLine`](@ref),
+number of DC links as well as related bus numbers and control mode (see [`DCLineID`](@ref),
 then data for:
-* each converter (see [`Converters`](@ref))
+* each converter (see [`ACConverters`](@ref))
 * each DC bus (see [`DCBuses`](@ref))
 * each DC link (see [`DCLinks`](@ref))
 
@@ -1979,9 +1979,9 @@ $TYPEDFIELDS
 """
 struct MultiTerminalDCLine
     "High-level data about this line."
-    line::DCLine
+    line::DCLineID
     "`line.nconv` converter records."
-    converters::Converters
+    converters::ACConverters
     "`line.ndcbs` DC bus records."
     buses::DCBuses
     "`line.ndcln` DC link records."
@@ -2419,7 +2419,7 @@ function Base.show(io::IO, mime::MIME"text/plain", network::T) where {T <: Netwo
 end
 
 function Base.show(io::IO, dcline::T) where {T <: MultiTerminalDCLine}
-    # only show the `DCLine` info when in containers,  such as in the table shown by
+    # only show the `DCLineID` info when in containers,  such as in the table shown by
     # `network.multi_terminal_dc` or the vector shown by `multi_terminal_dc.lines`
     if get(io, :limit, false)::Bool
         show(io, dcline.line)

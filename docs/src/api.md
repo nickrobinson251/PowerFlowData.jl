@@ -68,8 +68,8 @@ ImpedanceCorrections
 ```@docs
 MultiTerminalDCLines
 MultiTerminalDCLine
-DCLine
-Converters
+DCLineID
+ACConverters
 DCBuses
 DCLinks
 ```
