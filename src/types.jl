@@ -1885,13 +1885,52 @@ end
 $TYPEDFIELDS
 """
 struct DCBuses <: Records
+    """
+    DC bus number (1 to `NDCBS`).
+    The DC buses are used internally within each multi-terminal DC line and must be numbered
+    1 through `ndcbs`. no default.
+    """
     idc::Vector{BusNum}
+    """
+    AC converter bus number, or extended bus name enclosed in single quotes, or zero.
+    Each converter station bus specified in a converter record must be specified as `ib` in
+    exactly one DC bus record. DC buses that are connected only to other DC buses by DC links
+    and not to any AC converter buses must have a zero specified for `ib`. A DC bus specified
+    as `idc2` on one or more other DC bus records must have a zero specified for `ib` on its
+    own DC bus record. `ib` = 0 by default.
+    """
     ib::Vector{BusNum}
+    """
+    Area number (1 through the maximum number of areas at the current size level).
+    `ia` = 1 by default.
+    """
     ia::Vector{AreaNum}
+    """
+    Zone number (1 through the maximum number of zones at the current size level).
+    `zone` = 1 by default.
+    """
     zone::Vector{ZoneNum}
+    """
+    Alphanumeric identifier assigned to DC bus `idc`.
+    The name may be up to twelve characters and must be enclosed in single quotes. `name`
+    may contain any combination of blanks, uppercase letters, numbers, and special characters.
+    `name` is twelve blanks by default.
+    """
     name::Vector{InlineString15}
     idc2::Vector{BusNum}
+    """
+    Second DC bus to which converter `ib` is connected, or zero if the converter is connected directly to ground.
+    * For voltage controlling converters, this is the DC bus with the lower DC voltage magnitude
+        and `setvl` specifies the voltage difference between buses `idc` and `idc2`.
+    * For rectifiers, DC buses should be specified such that power flows from bus `idc2` to bus `idc`.
+    * For inverters, DC buses should be specified such that power flows from bus `idc` to bus `idc2`.
+    `idc2` is ignored on those dc bus records that have `ib` specified as zero. `idc2` = 0 by default.
+    """
     rgrnd::Vector{Float64}
+    """
+    Owner number (1 through the maximum number of owners at the current size level).
+    `owner` = 1 by default.
+    """
     owner::Vector{OwnerNum}
 end
 
