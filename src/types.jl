@@ -1941,10 +1941,26 @@ end
 $TYPEDFIELDS
 """
 struct DCLinks <: Records
+    "Branch \"from bus\" DC bus number."
     idc::Vector{BusNum}
+    """
+    Branch "to bus" DC bus number.
+    `jdc` is entered as a negative number to designate it as the metered end for area and
+    zone interchange calculations. Otherwise, bus `idc` is assumed to be the metered end.
+    """
     jdc::Vector{BusNum}
+    """
+    One-character uppercase alphanumeric branch circuit identifier.
+    It is recommended that single circuit branches be designated as having the circuit identifier "1".
+    `dcckt` = "1" by default.
+    """
     dcckt::Vector{InlineString1}
+    "DC link resistance, entered in ohms. No default."
     rdc::Vector{Float64}
+    """
+    DC link inductance, entered in mH. `ldc` is not used by the power flow solution activities
+    but is available to multi-terminal DC line dynamics models. `ldc` = 0.0 by default.
+    """
     ldc::Vector{Float64}
 end
 
