@@ -96,14 +96,14 @@ using Test
         @test eval(Meta.parse(repr(mt_dc_line))) isa MultiTerminalDCLine
         @test repr(mime, mt_dc_line) == strip(
             """
-            $(sprint(show, mime, mt_dc_line.line))
+            $(sprint(show, mime, mt_dc_line.line_id))
             $(sprint(show, mime, mt_dc_line.converters))
             $(sprint(show, mime, mt_dc_line.buses))
             $(sprint(show, mime, mt_dc_line.links))
             """
         )
-        dc_line = mt_dc_line.line
-        @test eval(Meta.parse(repr(dc_line))) isa DCLineID
+        line_id = mt_dc_line.line_id
+        @test eval(Meta.parse(repr(line_id))) isa DCLineID
     end
 
     @testset "v30 file" begin
@@ -298,22 +298,22 @@ using Test
         @test length(multi_terminal_dc) == 1
 
         mt_dc = only(multi_terminal_dc.lines)
-        dc_line = mt_dc.line
-        @test dc_line.i == 1     # first val
-        @test dc_line.vconvn == 0 # last val
+        line_id = mt_dc.line_id
+        @test line_id.i == 1     # first val
+        @test line_id.vconvn == 0 # last val
 
         converters = mt_dc.converters
-        @test length(converters) == dc_line.nconv == 4
+        @test length(converters) == line_id.nconv == 4
         @test converters.ib == [402, 401, 212, 213]
         @test converters.cnvcod == [3, 3, 1, 4]
 
         dc_buses = mt_dc.buses
-        @test length(dc_buses) == dc_line.ndcbs == 5
+        @test length(dc_buses) == line_id.ndcbs == 5
         @test dc_buses.idc == [1, 2, 3, 4, 5]
         @test dc_buses.owner == [4, 2, 4, 2, 4]
 
         dc_links = mt_dc.links
-        @test length(dc_links) == dc_line.ndcln == 4
+        @test length(dc_links) == line_id.ndcln == 4
         @test dc_links.idc == [1, 2, 3, 4]
         @test dc_links.ldc == [0.0, 0.0, 0.0, 0.0]
 

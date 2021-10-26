@@ -1968,7 +1968,7 @@ end
 	$TYPEDEF
 
 Each multi-terminal DC line record defines the number of converters, number of DC buses and
-number of DC links as well as related bus numbers and control mode (see [`DCLineID`](@ref),
+number of DC links as well as related bus numbers and control mode (see [`DCLineID`](@ref)),
 then data for:
 * each converter (see [`ACConverters`](@ref))
 * each DC bus (see [`DCBuses`](@ref))
@@ -1979,7 +1979,7 @@ $TYPEDFIELDS
 """
 struct MultiTerminalDCLine
     "High-level data about this line."
-    line::DCLineID
+    line_id::DCLineID
     "`line.nconv` converter records."
     converters::ACConverters
     "`line.ndcbs` DC bus records."
@@ -2422,7 +2422,7 @@ function Base.show(io::IO, dcline::T) where {T <: MultiTerminalDCLine}
     # only show the `DCLineID` info when in containers,  such as in the table shown by
     # `network.multi_terminal_dc` or the vector shown by `multi_terminal_dc.lines`
     if get(io, :limit, false)::Bool
-        show(io, dcline.line)
+        show(io, dcline.line_id)
     else
         Base.show_default(io, dcline)
     end
@@ -2430,7 +2430,7 @@ end
 
 # Each MultiTerminalDCLine is its own little network-like thing...
 function Base.show(io::IO, mime::MIME"text/plain", dcline::T) where {T <: MultiTerminalDCLine}
-    show(io, mime, dcline.line)
+    show(io, mime, dcline.line_id)
     get(io, :compact, false)::Bool && return nothing
     nfields = fieldcount(T)
     foreach(2:nfields) do i

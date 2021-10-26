@@ -310,26 +310,26 @@ end
 ###
 
 function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiTerminalDCLines}
-    dc_line, pos = parse_dclineid(bytes, pos, len, options)
+    line_id, pos = parse_dclineid(bytes, pos, len, options)
 
-    nconv = dc_line.nconv
+    nconv = line_id.nconv
     converters = ACConverters(nconv)
     for _ in 1:nconv
         converters, pos = parse_row!(converters, bytes, pos, len, options)
     end
 
-    ndcbs = dc_line.ndcbs
+    ndcbs = line_id.ndcbs
     dc_buses = DCBuses(ndcbs)
     for _ in 1:ndcbs
         dc_buses, pos = parse_row!(dc_buses, bytes, pos, len, options)
     end
 
-    ndcln = dc_line.ndcln
+    ndcln = line_id.ndcln
     dc_links = DCLinks(ndcln)
     for _ in 1:ndcln
         dc_links, pos = parse_row!(dc_links, bytes, pos, len, options)
     end
-    line = MultiTerminalDCLine(dc_line, converters, dc_buses, dc_links)
+    line = MultiTerminalDCLine(line_id, converters, dc_buses, dc_links)
     push!(rec.lines, line)
     return rec, pos
 end
