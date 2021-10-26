@@ -2,6 +2,8 @@
 ### types
 ###
 
+abstract type IDRow <: Tables.AbstractRow end
+
 # TODO: should the various bits of free text / comments / timestamps be in this struct?
 # Data can look like:
 # 0,   100.00          / PSS/E-30.3    WED, SEP 15 2021  21:04
@@ -15,7 +17,7 @@ Case identification data.
 # Fields
 $TYPEDFIELDS
 """
-struct CaseID <: Tables.AbstractRow
+struct CaseID <: IDRow
     """
     IC Change code:
     0 - base case (i.e., clear the working case before adding data to it).
@@ -37,7 +39,7 @@ abstract type Records end
 
 # Create a instance of a `Records` subtype, with all fields (assumed to be Vector)
 # expected to be populated with roughly `sizehint` elements
-(::Type{R})(sizehint=0) where {R <: Records} = (R(map(T -> sizehint!(T(), sizehint), fieldtypes(R))...))::R
+(::Type{R})(sizehint::Integer=0) where {R <: Records} = (R(map(T -> sizehint!(T(), sizehint), fieldtypes(R))...))::R
 
 # Store data in column table so conversion to DataFrame efficient.
 Tables.istable(::Type{<:Records}) = true
@@ -55,6 +57,7 @@ const BusNum = Int32
 const AreaNum = Int16
 const ZoneNum = Int16
 const OwnerNum = Int16
+const LineNum = Int16
 
 """
     $TYPEDEF
@@ -1098,7 +1101,7 @@ struct TwoTerminalDCLines <: Records
     """
     The DC line number.
     """
-    i::Vector{Int32}
+    i::Vector{LineNum}
     """
     Control mode:
     * 0 for blocked,
@@ -1739,8 +1742,305 @@ struct ImpedanceCorrections <: Records
     f11::Vector{Float64}
 end
 
-# Stub as we don't yet parse this data
-struct MultiTerminalDCLines <: Records end
+###
+### MultiTerminalDCLines
+###
+
+# `MultiTerminalDCLines` records are a bit special...
+# Each "record" is actually
+# - a row of data about the line, followed by
+# - arbitrary number of rows about the converters
+# - arbitrary number of rows about the buses
+# - arbitrary number of rows about the links
+# So we treat `MultiTerminalDCLines` as a single column table, where each value is a
+# dedicated `MultiTerminalDCLine` object. And each `MultiTerminalDCLine` is a bit like a
+# `Network`, with a `DCLineID` (`CaseID`) and 3 `Records` (`ACConverters, `DCBuses`, `DCLinks`)
+
+"""
+	$TYPEDEF
+
+# Fields
+$TYPEDFIELDS
+"""
+struct DCLineID <: IDRow
+    "Multi-terminal DC line number."
+    i::LineNum
+    "Number of AC converter station buses in multi-terminal DC line `i`. No default."
+    nconv::Int8
+    "Number of DC buses in multi-terminal DC line `i` (`nconv` < `ndcbs`). No default."
+    ndcbs::Int8
+    "Number of DC links in multi-terminal DC line `i`. No default."
+    ndcln::Int
+    """
+    Control mode
+    * 0 - blocked
+    * 1 - power
+    * 2 - current
+    `mdc` = 0 by default.
+    """
+    mdc::Int8 # 0, 1, or 2
+    """
+    Bus number, or extended bus name enclosed in single quotes, of the AC converter station
+    bus that controls DC voltage on the positive pole of multi-terminal DC line `i`.
+    Bus `vconv` must be a positive pole inverter. No default.
+    """
+    vconv::BusNum
+    """
+    Mode switch DC voltage; entered in kV.
+    When any inverter DC voltage magnitude falls below this value and the line is in power
+    control mode (i.e. `mdc` = 1), the line switches to current control mode with converter
+    current setpoints corresponding to their desired powers at scheduled DC voltage.
+    `vcmod` = 0.0 by default.
+    """
+    vcmod::Float64
+    """
+    Bus number, or extended bus name enclosed in single quotes, of the AC converter station
+    bus that controls DC voltage on the negative pole of multi-terminal DC line `i`.
+    If any negative pole converters are specified (see below), bus `vconvn` must be a
+    negative pole inverter. If the negative pole is not being modeled, `vconvn` must be
+    specified as zero. `vconvn` = 0 by default.
+    """
+    vconvn::BusNum
+end
+
+# Accept arguments as keywords  to get both a `repr` that's both pretty and parseable.
+DCLineID(; kwargs...) = DCLineID(values(kwargs)...)
+
+Tables.columnnames(::DCLineID) = fieldnames(DCLineID)
+Tables.getcolumn(dcln::DCLineID, i::Int) = getfield(dcln, i)
+Tables.getcolumn(dcln::DCLineID, nm::Symbol) = getfield(dcln, nm)
+
+"""
+	$TYPEDEF
+
+# Fields
+$TYPEDFIELDS
+"""
+struct ACConverters <: Records
+    """
+    AC converter bus number, or extended bus name enclosed in single quotes.
+    No default.
+    """
+    ib::Vector{BusNum}
+    "Number of bridges in series. No default."
+    n::Vector{Int8}
+    "Nominal maximum ALPHA or GAMMA angle; entered in degrees. No default."
+    angmx::Vector{Float64}
+    "Minimum steady-state ALPHA or GAMMA angle; entered in degrees. No default."
+    angmn::Vector{Float64}
+    "Commutating resistance per bridge; entered in ohms. No default."
+    rc::Vector{Float64}
+    "Commutating reactance per bridge; entered in ohms. No default."
+    xc::Vector{Float64}
+    "Primary base AC voltage; entered in kV. No default."
+    ebas::Vector{Float64}
+    "Actual transformer ratio. `tr` = 1.0 by default."
+    tr::Vector{Float64}
+    "Tap setting. `tap` = 1.0 by default."
+    tap::Vector{Float64}
+    "Maximum tap setting. `tpmx` = 1.5 by default."
+    tpmx::Vector{Float64}
+    "Minimum tap setting. `tpmx` = 0.51 by default."
+    tpmn::Vector{Float64}
+    "Tap step; must be a positive number. `tstp` = 0.00625 by default."
+    tstp::Vector{Float64}
+    """
+    Converter setpoint.
+    When `ib` is equal to `vconv` or `vconvn`, `setvl` specifies the scheduled DC voltage magnitude,
+    entered in kV, across the converter.
+    For other converter buses, `setvl` contains the converter current (amps) or power (MW) demand;
+    a positive value of `setvl` indicates that bus `ib` is a rectifier, and a negative value indicates an inverter.
+    No default.
+    """
+    setvl::Vector{Float64}
+    """
+    Converter participation factor.
+    When the order at any rectifier in the multi-terminal DC line is reduced,
+    either to maximum current or margin, the orders at the remaining converters on the same
+    pole are modified according to their ``DCPF``s to: ``SETVL + (DCPF/SUM)∗R```
+    where ``SUM`` is the sum of the ``DCPF``s at the unconstrained converte rs on the same
+    pole as the constrained rectifier, and ``R`` is the order reduction at the constrained rectifier.
+    `dcpf` = 1. by default.
+    """
+    dcpf::Vector{Float64}
+    """
+    Rectifier margin entered in per unit of desired DC power or current.
+    The converter order reduced by this fraction, ``(1.0 - MARG) ∗ SETVL``,
+    defines the minimum order for this rectifier. `marg` is used only at rectifiers.
+    `marg` = 0.0 by default.
+    """
+    marg::Vector{Float64}
+    """
+    Converter code.
+    A positive value or zero must be entered if the converter is on the positive pole of multi-terminal DC line `i`.
+    A negative value must be entered for negative pole converters. `cnvcod` = 1 by default.
+    """
+    cnvcod::Vector{Int8}
+end
+
+"""
+	$TYPEDEF
+
+# Fields
+$TYPEDFIELDS
+"""
+struct DCBuses <: Records
+    """
+    DC bus number (1 to `NDCBS`).
+    The DC buses are used internally within each multi-terminal DC line and must be numbered
+    1 through `ndcbs`. no default.
+    """
+    idc::Vector{BusNum}
+    """
+    AC converter bus number, or extended bus name enclosed in single quotes, or zero.
+    Each converter station bus specified in a converter record must be specified as `ib` in
+    exactly one DC bus record. DC buses that are connected only to other DC buses by DC links
+    and not to any AC converter buses must have a zero specified for `ib`. A DC bus specified
+    as `idc2` on one or more other DC bus records must have a zero specified for `ib` on its
+    own DC bus record. `ib` = 0 by default.
+    """
+    ib::Vector{BusNum}
+    """
+    Area number (1 through the maximum number of areas at the current size level).
+    `ia` = 1 by default.
+    """
+    ia::Vector{AreaNum}
+    """
+    Zone number (1 through the maximum number of zones at the current size level).
+    `zone` = 1 by default.
+    """
+    zone::Vector{ZoneNum}
+    """
+    Alphanumeric identifier assigned to DC bus `idc`.
+    The name may be up to twelve characters and must be enclosed in single quotes. `name`
+    may contain any combination of blanks, uppercase letters, numbers, and special characters.
+    `name` is twelve blanks by default.
+    """
+    name::Vector{InlineString15}
+    idc2::Vector{BusNum}
+    """
+    Second DC bus to which converter `ib` is connected, or zero if the converter is connected directly to ground.
+    * For voltage controlling converters, this is the DC bus with the lower DC voltage magnitude
+        and `setvl` specifies the voltage difference between buses `idc` and `idc2`.
+    * For rectifiers, DC buses should be specified such that power flows from bus `idc2` to bus `idc`.
+    * For inverters, DC buses should be specified such that power flows from bus `idc` to bus `idc2`.
+    `idc2` is ignored on those dc bus records that have `ib` specified as zero. `idc2` = 0 by default.
+    """
+    rgrnd::Vector{Float64}
+    """
+    Owner number (1 through the maximum number of owners at the current size level).
+    `owner` = 1 by default.
+    """
+    owner::Vector{OwnerNum}
+end
+
+"""
+	$TYPEDEF
+
+# Fields
+$TYPEDFIELDS
+"""
+struct DCLinks <: Records
+    "Branch \"from bus\" DC bus number."
+    idc::Vector{BusNum}
+    """
+    Branch "to bus" DC bus number.
+    `jdc` is entered as a negative number to designate it as the metered end for area and
+    zone interchange calculations. Otherwise, bus `idc` is assumed to be the metered end.
+    """
+    jdc::Vector{BusNum}
+    """
+    One-character uppercase alphanumeric branch circuit identifier.
+    It is recommended that single circuit branches be designated as having the circuit identifier "1".
+    `dcckt` = "1" by default.
+    """
+    dcckt::Vector{InlineString1}
+    "DC link resistance, entered in ohms. No default."
+    rdc::Vector{Float64}
+    """
+    DC link inductance, entered in mH. `ldc` is not used by the power flow solution activities
+    but is available to multi-terminal DC line dynamics models. `ldc` = 0.0 by default.
+    """
+    ldc::Vector{Float64}
+end
+
+"""
+	$TYPEDEF
+
+Each multi-terminal DC line record defines the number of converters, number of DC buses and
+number of DC links as well as related bus numbers and control mode (see [`DCLineID`](@ref)),
+then data for:
+* each converter (see [`ACConverters`](@ref))
+* each DC bus (see [`DCBuses`](@ref))
+* each DC link (see [`DCLinks`](@ref))
+
+# Fields
+$TYPEDFIELDS
+"""
+struct MultiTerminalDCLine
+    "High-level data about this line."
+    line_id::DCLineID
+    "`line.nconv` converter records."
+    converters::ACConverters
+    "`line.ndcbs` DC bus records."
+    buses::DCBuses
+    "`line.ndcln` DC link records."
+    links::DCLinks
+end
+
+"""
+    $TYPEDEF
+
+PSS/E allows the representation of up to 12 converter stations on one multi-terminal DC line.
+Further, it allows the modelling of multi-terminal networks of up to 20 buses including the
+AC convertor buses and the DC network buses.
+
+## Notes
+
+The following are notes on multi-terminal links:
+* Conventional two-terminal and multi-terminal DC lines are stored separately.
+  Therefore, there may simultaneously exist, for example, a two-terminal DC line identified
+  as DC line number 1 along with a multi-terminal line numbered 1.
+* Multi-terminal lines should have at least three converter terminals;
+  conventional DC lines consisting of two terminals should be modeled as two-terminal lines
+  (see [`TwoTerminalDCLines`](@ref).
+* AC converter buses may be type one, two, or three buses. Generators, loads, fixed and
+  switched shunt elements, other DC line converters, and FACTS device sending ends are
+  permitted at converter buses.
+* Each multi-terminal DC line is treated as a subnetwork of DC buses and DC links connecting
+  its AC converter buses. For each multi-terminal DC line, the DC buses must be numbered 1
+  through `ndcbs`.
+* Each AC converter bus must be specified as `ib` on exactly one DC bus record; there may be
+  DC buses connected only to other DC buses by DC links but not to any AC converter bus.
+* AC converter bus `ib` may be connected to a DC bus `idc`, which is connected directly to ground.
+  `ib` is specified on the DC bus record for DC bus `idc`; the `idc2` field is specified as zero.
+* Alternatively, AC converter bus `ib` may be connected to two DC buses `idc` and `idc2`,
+  the second of which is connected to ground through a specified resistance.
+  `ib` and `idc2` are specified on the DC bus record for DC bus `idc`;
+  on the DC bus record for bus `idc2`, the AC converter bus and second DC bus fields
+  (`ib` and `idc2`, respectively) must be specified as zero and the grounding resistance is
+  specified as `rgrnd`.
+* The same DC bus may be specified as the second DC bus for more than one AC converter bus.
+* All DC buses within a multi-terminal DC line must be reachable from any other point within the subnetwork.
+* The area number assigned to DC buses and the metered end designation of DC links are used in
+  calculating area interchange and assigning losses as well as in the interchange control option
+  of the power flow solution activities. Similarly, the zone assignment and metered end specification
+  are used in Zonal reporting activities.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct MultiTerminalDCLines <: Records
+    lines::Vector{MultiTerminalDCLine}
+
+    # Avoid ambiguity with generic 1-arg Records constructor
+    MultiTerminalDCLines(lines::AbstractVector) = new(lines)
+    MultiTerminalDCLines() = new(Vector{MultiTerminalDCLine}())
+end
+
+###
+### MultiSectionLineGroups
+###
 
 """
     $TYPEDEF
@@ -1930,7 +2230,7 @@ struct FACTSDevices <: Records
     * 0 - out-of-service (i.e., series and shunt links open).
     * 1 - series and shunt links operating.
     * 2 - series link bypassed (i.e., like a zero impedance line) and shunt link operating as a STATCON.
-    * 3 - seriesandshuntlinksoperatingwithserieslinkatconstantseriesimpedance.
+    * 3 - series and shunt links operating with series link at constant series impedance.
     * 4 - series and shunt links operating with series link at constant series voltage.
     * 5 - master device of an IPFC with P and Q setpoints specified;
         FACTS device N+1 must be the slave device (i.e., its `mode` is 6 or 8) of this IPFC.
@@ -2041,6 +2341,7 @@ Currently supported are:
 1. [`VSCDCLines`](@ref)
 1. [`SwitchedShunts`](@ref)
 1. [`ImpedanceCorrections`](@ref)
+1. [`MultiTerminalDCLines`](@ref)
 1. [`MultiSectionLineGroups`](@ref)
 1. [`Zones`](@ref)
 1. [`InterAreaTransfers`](@ref)
@@ -2085,6 +2386,8 @@ struct Network
     switched_shunts::SwitchedShunts
     "Transformer impedance correction records."
     impedance_corrections::ImpedanceCorrections
+    "Multi-terminal DC Line records."
+    multi_terminal_dc::MultiTerminalDCLines
     "Multi-section line group records."
     multi_section_lines::MultiSectionLineGroups
     "Zone records."
@@ -2115,8 +2418,32 @@ function Base.show(io::IO, mime::MIME"text/plain", network::T) where {T <: Netwo
     return nothing
 end
 
-Base.show(io::IO, x::CaseID) = print(io, "CaseID", NamedTuple(x))  # parseable repr
-Base.show(io::IO, ::MIME"text/plain", x::CaseID) = print(io, "CaseID: ", NamedTuple(x))
+function Base.show(io::IO, dcline::T) where {T <: MultiTerminalDCLine}
+    # only show the `DCLineID` info when in containers,  such as in the table shown by
+    # `network.multi_terminal_dc` or the vector shown by `multi_terminal_dc.lines`
+    if get(io, :limit, false)::Bool
+        show(io, dcline.line_id)
+    else
+        Base.show_default(io, dcline)
+    end
+end
+
+# Each MultiTerminalDCLine is its own little network-like thing...
+function Base.show(io::IO, mime::MIME"text/plain", dcline::T) where {T <: MultiTerminalDCLine}
+    show(io, mime, dcline.line_id)
+    get(io, :compact, false)::Bool && return nothing
+    nfields = fieldcount(T)
+    foreach(2:nfields) do i
+        print(io, "\n")
+        show(io, mime, getfield(dcline, i))
+    end
+    return nothing
+end
+
+Base.show(io::IO, x::T) where {T <: IDRow} = print(io, T, NamedTuple(x))  # parseable repr
+function Base.show(io::IO, ::MIME"text/plain", x::T) where {T <: IDRow}
+    print(io, T, ": ", NamedTuple(x))
+end
 
 Base.summary(io::IO, x::R) where {R <: Records} = print(io, "$R with $(length(x)) records")
 

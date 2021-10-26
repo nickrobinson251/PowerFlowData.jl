@@ -1,5 +1,6 @@
 using DataFrames
 using InteractiveUtils: subtypes
+using InlineStrings: InlineStrings  # for `eval(repr(...))`
 using PowerFlowData
 using Tables
 using Test
@@ -39,8 +40,9 @@ using Test
 
         for T in (
             Buses, Loads, Generators, Branches, Transformers, AreaInterchanges,
-            TwoTerminalDCLines, VSCDCLines, SwitchedShunts, ImpedanceCorrections, Zones,
-            InterAreaTransfers, Owners, FACTSDevices
+            TwoTerminalDCLines, VSCDCLines, SwitchedShunts, ImpedanceCorrections,
+            MultiTerminalDCLines, MultiSectionLineGroups, Zones, InterAreaTransfers,
+            Owners, FACTSDevices
         )
             @test T <: PowerFlowData.Records
             @test Tables.istable(T)
@@ -53,7 +55,8 @@ using Test
     end
 
     @testset "show" begin
-        net = parse_network("testfiles/synthetic_data_v30.raw")
+        # test of file which has MultiTerminalDCLines as they have their own `show`.
+        net = parse_network("testfiles/synthetic_data_v29.raw")
 
         # CaseID should have a parseable `repr`; `AbstractRows` don't get this for free.
         @test repr(net.caseid) == "CaseID(ic = 0, sbase = 100.0)"
@@ -64,7 +67,7 @@ using Test
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 16 data categories:
+            Network with 17 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -76,6 +79,7 @@ using Test
              $(sprint(show, mime, net.vsc_dc; context))
              $(sprint(show, mime, net.switched_shunts; context))
              $(sprint(show, mime, net.impedance_corrections; context))
+             $(sprint(show, mime, net.multi_terminal_dc; context))
              $(sprint(show, mime, net.multi_section_lines; context))
              $(sprint(show, mime, net.zones; context))
              $(sprint(show, mime, net.area_transfers; context))
@@ -85,8 +89,21 @@ using Test
         )
         @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
 
-        @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 3 records"
-        @test startswith(repr(mime, net.buses), "Buses with 3 records, 11 columns:\n──")
+        @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 2 records"
+        @test startswith(repr(mime, net.buses), "Buses with 2 records, 11 columns:\n──")
+
+        mt_dc_line = net.multi_terminal_dc.lines[1]
+        @test eval(Meta.parse(repr(mt_dc_line))) isa MultiTerminalDCLine
+        @test repr(mime, mt_dc_line) == strip(
+            """
+            $(sprint(show, mime, mt_dc_line.line_id))
+            $(sprint(show, mime, mt_dc_line.converters))
+            $(sprint(show, mime, mt_dc_line.buses))
+            $(sprint(show, mime, mt_dc_line.links))
+            """
+        )
+        line_id = mt_dc_line.line_id
+        @test eval(Meta.parse(repr(line_id))) isa DCLineID
     end
 
     @testset "v30 file" begin
@@ -174,6 +191,9 @@ using Test
         impedance_corrections = net1.impedance_corrections
         @test impedance_corrections.i == [1]       # first col
         @test impedance_corrections.f11 == [0.0]   # last col; `f11` not present; default to zero
+
+        multi_terminal_dc = net1.multi_terminal_dc
+        @test isempty(multi_terminal_dc)
 
         multi_section_lines = net1.multi_section_lines
         @test multi_section_lines.i == [1, 114]                     # first col
@@ -273,6 +293,29 @@ using Test
         impedance_corrections = net2.impedance_corrections
         @test impedance_corrections.i == [1, 2]          # first col
         @test impedance_corrections.f11 == [3.34, 1.129] # last col
+
+        multi_terminal_dc = net2.multi_terminal_dc
+        @test length(multi_terminal_dc) == 1
+
+        mt_dc = only(multi_terminal_dc.lines)
+        line_id = mt_dc.line_id
+        @test line_id.i == 1     # first val
+        @test line_id.vconvn == 0 # last val
+
+        converters = mt_dc.converters
+        @test length(converters) == line_id.nconv == 4
+        @test converters.ib == [402, 401, 212, 213]
+        @test converters.cnvcod == [3, 3, 1, 4]
+
+        dc_buses = mt_dc.buses
+        @test length(dc_buses) == line_id.ndcbs == 5
+        @test dc_buses.idc == [1, 2, 3, 4, 5]
+        @test dc_buses.owner == [4, 2, 4, 2, 4]
+
+        dc_links = mt_dc.links
+        @test length(dc_links) == line_id.ndcln == 4
+        @test dc_links.idc == [1, 2, 3, 4]
+        @test dc_links.ldc == [0.0, 0.0, 0.0, 0.0]
 
         multi_section_lines = net2.multi_section_lines
         @test isempty(multi_section_lines)
