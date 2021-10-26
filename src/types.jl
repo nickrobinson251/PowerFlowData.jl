@@ -2033,6 +2033,8 @@ $TYPEDFIELDS
 struct MultiTerminalDCLines <: Records
     lines::Vector{MultiTerminalDCLine}
 
+    # Avoid ambiguity with generic 1-arg Records constructor
+    MultiTerminalDCLines(lines::AbstractVector) = new(lines)
     MultiTerminalDCLines() = new(Vector{MultiTerminalDCLine}())
 end
 

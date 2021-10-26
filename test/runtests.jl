@@ -10,9 +10,7 @@ using Test
     @testset "Infers" begin
         for T in subtypes(PowerFlowData.Records)
             @inferred T()
-            # TODO: figure out what's up with the MultiTerminalDCLines constructor...
-            # probably change to define individual constructors in a for-loop.
-            T !== MultiTerminalDCLines && @inferred T(1)
+            @inferred T(1)
         end
     end
 
