@@ -22,7 +22,7 @@ Read a PSS/E-format `.raw` Power Flow Data file and return a [`Network`](@ref) o
 function parse_network(source)
     bytes, pos, len = getbytes(source)
 
-    caseid, pos = parse_caseid(bytes, pos, len, OPTIONS)
+    caseid, pos = parse_idrow(CaseID, bytes, pos, len, OPTIONS)
     @debug 1 "Parsed CaseID: pos = $pos"
 
     # Skip the 2 lines of comments
@@ -100,30 +100,6 @@ function parse_network(source)
         owners,
         facts,
     )
-end
-
-function parse_caseid(bytes, pos, len, options)
-    ic, pos, code = parse_value(Int, bytes, pos, len, options)
-    @debug 2 "$(codes(code)) pos = $pos, newline = $(newline(code))"
-
-    # Support files that have first row like:
-    # 0,   100.00          / PSS/E-30.3    WED, SEP 15 2021  21:04
-    # and those with first row like:
-    # 0,100.0,30 / PSS(tm)E-30 RAW created      Wed, Sep 15 2021 21:04
-    # TODO: avoid needing to extract `sbase` value from String?
-    sbase = Parsers.tryparse(Float64, bytes, options, pos, len)
-    if sbase === nothing
-        val, pos, code = parse_value(String, bytes, pos, len, options)
-        str = Parsers.getstring(bytes, val, options.e)
-        @debug 2 "$(codes(code)) pos = $pos, newline = $(newline(code))"
-        sbase = parse(Float64, first(split(str, '/')))
-    end
-
-    # if delimiter after `sbase` value, then won't have reached end of line.
-    if !newline(code)
-        pos = next_line(bytes, pos, len)
-    end
-    return CaseID(ic, sbase), pos
 end
 
 function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {R <: Records}
@@ -310,7 +286,7 @@ end
 ###
 
 function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiTerminalDCLines}
-    line_id, pos = parse_dclineid(bytes, pos, len, options)
+    line_id, pos = parse_idrow(DCLineID, bytes, pos, len, options)
 
     nconv = line_id.nconv
     converters = ACConverters(nconv)
@@ -334,17 +310,24 @@ function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiTerminalD
     return rec, pos
 end
 
-@generated function parse_dclineid(bytes, pos, len, options)
+@generated function parse_idrow(::Type{R}, bytes, pos, len, options) where {R <: IDRow}
     block = Expr(:block)
-    nfields = fieldcount(DCLineID)
-    for i in 1:fieldcount(DCLineID)
-        T = fieldtype(DCLineID, i)
+    nfields = fieldcount(R)
+    for i in 1:nfields
+        T = fieldtype(R, i)
         val_i = Symbol(:val, i)
-        push!(block.args, :(($val_i, pos, code) = parse_value($T, bytes, pos, len, options)))
+        push!(block.args, quote
+            res = xparse($T, bytes, pos, len, options)
+            $val_i = res.val
+            pos += res.tlen
+        end)
     end
     push!(block.args, quote
-        args = Tuple{$(fieldtypes(DCLineID)...)}([$((Symbol(:val, i) for i in 1:nfields)...)])
-        return DCLineID(args...), pos
+        if !newline(res.code)
+            pos = next_line(bytes, pos, len)
+        end
+        args = Tuple{$(fieldtypes(R)...)}([$((Symbol(:val, i) for i in 1:nfields)...)])
+        return R(args...), pos
     end)
     # @show block
     return block
