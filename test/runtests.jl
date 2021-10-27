@@ -129,7 +129,7 @@ using Test
 
         gens = net1.generators
         @test gens.i == [111, -112, 113]
-        @test gens.fi == [1.0, 1.0, 1.0]
+        @test gens.f1 == [1.0, 1.0, 1.0]  # last col guaranteed to exist
         @test gens.id[1] == "ST"
 
         branches = net1.branches
@@ -240,7 +240,7 @@ using Test
 
         gens = net2.generators
         @test gens.i == [104]    # first col
-        @test gens.fi == [1.0]   # last col
+        @test gens.f1 == [1.0]   # last col guaranteed to exist
         @test gens.id[1] == "1 " # string col
 
         branches = net2.branches

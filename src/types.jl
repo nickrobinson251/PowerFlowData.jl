@@ -417,17 +417,43 @@ struct Generators <: Records
     "Minimum generator active power output; entered in MW. PB = -9999.0 by default."
     pb::Vector{Float64}
     """
-    Owner number; (1 through the maximum number of owners at the current size level).
+    Owner number (1 through the maximum number of owners at the current size level).
     Each machine may have up to four owners. See [`Owners`](@ref).
-    By default, O1 is the owner to which bus "I" is assigned and O2, O3, and O4 are zero.
+    By default, `o1` is the owner to which bus `i` is assigned and `o2`, `o3`, and `o4` are
+    zero.
     """
-    oi::Vector{OwnerNum}
+    o1::Vector{OwnerNum}
     """
-    Fraction of total ownership assigned to owner Oi; each Fi must be positive.
-    The Fi values are normalized such that they sum to 1.0 before they are placed in the working case.
-    By default, each Fi is 1.0.
+    Fraction of total ownership assigned to owner `oi`; each `fi` must be positive.
+    The `fi` values are normalized such that they sum to 1.0 before they are placed in the working case.
+    By default, each `fi` is 1.0.
     """
-    fi::Vector{Float64}
+    f1::Vector{Union{Float64,Missing}}
+    o2::Vector{Union{OwnerNum,Missing}}
+    f2::Vector{Union{Float64,Missing}}
+    o3::Vector{Union{OwnerNum,Missing}}
+    f3::Vector{Union{Float64,Missing}}
+    o4::Vector{Union{OwnerNum,Missing}}
+    f4::Vector{Union{Float64,Missing}}
+    """
+    Wind machine control mode; `wmod` is used to indicate whether a machine is a wind machine,
+    and, if it is, the type of reactive power limits to be imposed.
+    * 0 for a machine that is not a wind machine.
+    * 1 for a wind machine for which reactive power limits are specified by QT and QB.
+    * 2 for a wind machine for which reactive power limits are determined from the machine’s
+      active power output and `wpf`; limits are of equal magnitude and opposite sign.
+    * 3 for a wind machine with a fixed reactive power setting determined from the machine’s
+      active power output and `wpf`; when `wpf` is positive, the machine’s reactive power has
+      the same sign as its active power; when `wpf` is negative, the machine’s reactive power
+      has the opposite sign of its active power.
+    `wmod` = 0 by default.
+    """
+    wmod::Vector{Union{Int8,Missing}} # 0, 1, 2, or 3
+    """
+    Power factor used in calculating reactive power limits or output when `wmod` is 2 or 3.
+    `wpf` = 1.0 by default.
+    """
+    wpf::Vector{Union{Float64,Missing}}
 end
 
 

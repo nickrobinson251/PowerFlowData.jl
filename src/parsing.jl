@@ -255,8 +255,10 @@ const N_SPECIAL = IdDict(
     ImpedanceCorrections => 18,
     # MultiSectionLineGroups can have between 1 - 9 `DUM_i` columns
     MultiSectionLineGroups => 8,
-    # Loads have 2 extra columns in v33, compared to v30
+    # Loads have 2 extra columns in v33 compared to v30
     Loads => 2,
+    # Generators have 1 - 4 `Oi`, `Fi` values, plus 3 extra columns in v33 compared to v30
+    Generators => 8,
 )
 
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections}}
@@ -286,13 +288,15 @@ const N_SPECIAL = IdDict(
 end
 
 ###
-### MultiSectionLineGroups
+### Loads, Generators, MultiSectionLineGroups
 ###
 
-@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{Loads,MultiSectionLineGroups}}
+@generated function parse_row!(
+    rec::R, bytes, pos, len, options
+) where {R <: Union{Loads,Generators,MultiSectionLineGroups}}
     block = Expr(:block)
     N = fieldcount(R) - N_SPECIAL[R]
-    append!(block.args, _parse_values(R, 1, N))  # I, J, ID, DUM1
+    append!(block.args, _parse_values(R, 1, N))
     for col in (N + 1):fieldcount(R)
         T = eltype(fieldtype(R, col))
         push!(block.args, :(
