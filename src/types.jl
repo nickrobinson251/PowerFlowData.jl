@@ -43,7 +43,7 @@ struct CaseID <: IDRow
 end
 
 function CaseID(; ic=0, sbase=100.0, rev=missing, xfrrat=missing, nxfrat=missing, basfrq=missing)
-	return CaseID(ic, sbase, rev, xfrrat, nxfrat, basfrq)
+    return CaseID(ic, sbase, rev, xfrrat, nxfrat, basfrq)
 end
 
 Tables.columnnames(::CaseID) = fieldnames(CaseID)

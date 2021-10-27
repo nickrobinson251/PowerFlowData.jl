@@ -48,10 +48,10 @@ using Test
             @test Tables.istable(T)
         end
 
-        caseid = CaseID(0, 100.0)
+        caseid = CaseID(ic=0, sbase=100.0)
         @test caseid[1] == caseid[:ic]
         @test caseid[2] == caseid[:sbase]
-        @test NamedTuple(caseid) == (ic=0, sbase=100.0)
+        @test NamedTuple(caseid) isa NamedTuple
     end
 
     @testset "show" begin
@@ -59,8 +59,8 @@ using Test
         net = parse_network("testfiles/synthetic_data_v29.raw")
 
         # CaseID should have a parseable `repr`; `AbstractRows` don't get this for free.
-        @test repr(net.caseid) == "CaseID(ic = 0, sbase = 100.0)"
-        @test eval(Meta.parse(repr(net.caseid))) == CaseID(0, 100.0)
+        @test startswith(repr(net.caseid), "CaseID(ic = 0, sbase = 100.0, ")
+        @test isequal(eval(Meta.parse(repr(net.caseid))), CaseID(ic=0, sbase=100.0))
 
         mime = MIME("text/plain")
         context = :compact => true
@@ -87,7 +87,7 @@ using Test
              $(sprint(show, mime, net.facts; context))
             """
         )
-        @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
+        @test startswith(repr(mime, net.caseid), "CaseID: (ic = 0, sbase = 100.0, ")
 
         @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 2 records"
         @test startswith(repr(mime, net.buses), "Buses with 2 records, 11 columns:\n──")

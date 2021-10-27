@@ -323,24 +323,32 @@ function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiTerminalD
     return rec, pos
 end
 
+###
+### IDRow
+###
+
 @generated function parse_idrow(::Type{R}, bytes, pos, len, options) where {R <: IDRow}
     block = Expr(:block)
     nfields = fieldcount(R)
+    push!(block.args, :(kwargs = NamedTuple()))
     for i in 1:nfields
-        T = fieldtype(R, i)
-        val_i = Symbol(:val, i)
+        T = nonmissingtype(fieldtype(R, i))
+        val_i = fieldname(R, i)
         push!(block.args, quote
             res = xparse($T, bytes, pos, len, options)
             $val_i = res.val
             pos += res.tlen
+            code = res.code
+            kwargs = merge(kwargs, (; $val_i))
+            (invaliddelimiter(code) || newline(code)) && @goto done
         end)
     end
     push!(block.args, quote
-        if !newline(res.code)
+        @label done
+        if !newline(code)
             pos = next_line(bytes, pos, len)
         end
-        args = Tuple{$(fieldtypes(R)...)}([$((Symbol(:val, i) for i in 1:nfields)...)])
-        return R(args...), pos
+        return R(; kwargs...), pos
     end)
     # @show block
     return block
