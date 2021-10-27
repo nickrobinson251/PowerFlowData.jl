@@ -269,6 +269,52 @@ struct Loads <: Records
     intrpt::Vector{Union{Bool,Missing}}
 end
 
+"""
+    $TYPEDEF
+
+Each network bus at which fixed bus shunt is to be represented must be specified in at least
+one fixed bus shunt data record. Multiple fixed bus shunts may be represented at a bus by
+specifying more than one fixed bus shunt data record for the bus, each with a different shunt
+identifier.
+
+The admittance specified in the data record can represent a shunt capacitor or a shunt reactor
+(both with or without a real component) or a shunt resistor. It must not represent line
+connected admittance, switched shunts, loads, line charging or transformer magnetizing impedance,
+all of which are entered in other data categories.
+
+!!! compat "Not present in v30 files"
+    v30 files do not `FixedShunts`; refer to [`Buses`](@ref) and [`SwitchedShunts`](@ref).
+"""
+struct FixedShunts <: Records
+    "Bus number, or extended bus name enclosed in single quotes. No default."
+    i::Vector{BusNum}
+    """
+    One- or two-character uppercase non-blank alphanumeric shunt identifier used to
+    distinguish among multiple shunts at bus `i`. It is recommended that, at buses for which
+    a single shunt is present, the shunt be designated as having the shunt identifier 1.
+    `id` = 1 by default.
+    """
+    id::Vector{InlineString3}
+    "Shunt status of one for in-service and zero for out-of-service. `status` = 1 by default."
+    status::Vector{Bool}
+    """
+    Active component of shunt admittance to ground; entered in MW at one per unit voltage.
+    `gl` should not include any resistive impedance load, which is entered as part of load
+    data (see [`Loads`](@ref). `gl` = 0.0 by default.
+    """
+    gl::Vector{Float64}
+    """
+    Reactive component of shunt admittance to ground; entered in Mvar at one per unit voltage.
+    `bl` should not include any reactive impedance load, which is entered as part of load data
+    (see [`Loads`](@ref)); line charging and line connected shunts, which are entered as part
+    of non-transformer branch data (see [`Branches`](@ref)); transformer magnetizing
+    admittance, which is entered as part of transformer data (see [`Transformers`](@ref));
+    or switched shunt admittance, which is entered as part of switched shunt data (see
+    [`SwitchedShunts`](@ref). `bl` is positive for a capacitor, and negative for a reactor
+    or an inductive load. `bl` = 0.0 by default.
+    """
+    bl::Vector{Float64}
+end
 
 """
     $TYPEDEF
@@ -393,8 +439,11 @@ In PSS/E, the basic transmission line model is an Equivalent Pi connected betwee
 Data for shunt equipment units, such as reactors, which are connected to and switched with the line,
 are entered in the same data record.
 
-!!! note "Shunts connected to buses"
-    To represent shunts connected to buses, that shunt data should be entered in the bus data record.
+!!! compat "Shunts connected to buses"
+    In PSSE v30, to represent shunts connected to buses, that shunt data should be entered in
+    the [`Buses`](@ref) data records.
+    In PSSE v33, to represent shunts connected to buses, that shunt data should be entered in
+    [`FixedShunts`](@ref) and/or [`SwitchedShunts`](@ref) data records.
 
 !!! note "Transformers"
     Branches to be modeled as transformers are not specified in this data category;
@@ -2423,6 +2472,7 @@ Currently supported are:
 1. [`CaseID`](@ref)
 1. [`Buses`](@ref)
 1. [`Loads`](@ref)
+1. [`FixedShunts`](@ref)
 1. [`Generators`](@ref)
 1. [`Branches`](@ref)
 1. [`Transformers`](@ref)
@@ -2460,6 +2510,8 @@ struct Network
     buses::Buses
     "Load records."
     loads::Loads
+    "Fixed Bus Shunt records."
+    fixed_shunts::Union{FixedShunts,Nothing}
     "Generator records."
     generators::Generators
     "Non-transformer Branch records."
@@ -2499,13 +2551,14 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", network::T) where {T <: Network}
     show(io, mime, T)
     get(io, :compact, false)::Bool && return nothing
-    nfields = fieldcount(T)
-    print(io, " with $nfields data categories:\n ")
-    show(io, mime, network.caseid)
+    records = (getfield(network, i) for i in 1:fieldcount(T))
+    nrec = count(!isnothing, records)
+    print(io, " with $nrec data categories:")
     io_compact = IOContext(io, :compact => true)
-    foreach(2:nfields) do i
+    for rec in records
+        rec === nothing && continue
         print(io, "\n ")
-        show(io_compact, mime, getfield(network, i))
+        show(io_compact, mime, rec)
     end
     return nothing
 end

@@ -40,6 +40,13 @@ function parse_network(source)
     loads, pos = parse_records!(Loads(nbuses), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Loads: nrows = $(length(loads)), pos = $pos"
 
+    if is_v33
+        fixed_shunts, pos = parse_records!(FixedShunts(), bytes, pos, len, OPTIONS)
+        @debug 1 "Parsed FixedShunts: nrows = $(length(fixed_shunts)), pos = $pos"
+    else
+        fixed_shunts = nothing
+    end
+
     gens, pos = parse_records!(Generators(nbuses÷10), bytes, pos, len, OPTIONS)
     ngens = length(gens)
     @debug 1 "Parsed Generators: nrows = $ngens, pos = $pos"
@@ -99,6 +106,7 @@ function parse_network(source)
         caseid,
         buses,
         loads,
+        fixed_shunts,
         gens,
         branches,
         transformers,

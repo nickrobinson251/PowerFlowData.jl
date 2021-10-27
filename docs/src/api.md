@@ -26,6 +26,11 @@ Buses33
 Loads
 ```
 
+## Fixed Shunts
+```@docs
+FixedShunts
+```
+
 ## Generators
 ```@docs
 Generators
