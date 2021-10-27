@@ -1002,20 +1002,6 @@ _is_t2(x::Transformers) = all(ismissing, x.cx3)
 
 # Since 2-winding data is a subset of 3-winding data, check at runtime if we have any
 # 3-winding data and if not just return the subset of columns required for 2-winding data.
-function Tables.schema(x::R) where {R <: Transformers}
-    return if _is_t2(x)
-        Tables.Schema(fieldname.(R, T2_FIELDS), fieldtype.(R, T2_FIELDS))
-    else
-        Tables.Schema(fieldnames(R), fieldtypes(R))
-    end
-end
-
-# `DataFrame` just calls `columns`, so we need that to return something that respects the
-# schema (which for `Transformers` data depends on the values).
-Tables.columns(x::Transformers) = Tables.columntable(Tables.schema(x), x)
-
-# Again, respect the schema.
-# TODO: Can `schema` or `columnnames` just be defined using the other?
 function Tables.columnnames(x::R) where {R <: Transformers}
     if _is_t2(x)
         fieldname.(R, T2_FIELDS)
@@ -1023,6 +1009,17 @@ function Tables.columnnames(x::R) where {R <: Transformers}
         fieldnames(R)
     end
 end
+
+function Tables.schema(x::R) where {R <: Transformers}
+    cols = Tables.columnnames(x)
+    typs = fieldtype.(R, cols)
+    return Tables.Schema(cols, typs)
+end
+
+# `DataFrame` just calls `columns`, so we need that to return something that respects the
+# schema. For `Transformers` schema depends on the values, so cannot rely on the
+# default `columns(::Records)` method.
+Tables.columns(x::Transformers) = Tables.columntable(Tables.schema(x), x)
 
 # Again, respect the schema.
 Base.size(x::Transformers) = (length(x), length(Tables.columnnames(x)))
