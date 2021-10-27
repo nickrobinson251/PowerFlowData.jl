@@ -57,8 +57,10 @@ function parse_network(source)
     vsc_dc, pos = parse_records!(VSCDCLines(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed VSCDCLines: nrows = $(length(vsc_dc)), pos = $pos"
 
-    switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
+    # if ver < 31
+        switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
+        @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
+    # end
 
     impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed ImpedanceCorrections: nrows = $(length(impedance_corrections)), pos = $pos"
@@ -81,6 +83,16 @@ function parse_network(source)
     facts, pos = parse_records!(FACTSDevices(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed FACTSDevices: nrows = $(length(facts)), pos = $pos"
 
+    # if ver == 33
+    #     switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
+    #     @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
+
+    #     gne_devices, pos = parse_records!(GNEDevices(), bytes, pos, len, OPTIONS)
+    #     @debug 1 "Parsed SwitchedShunts: nrows = $(length(gne_devices)), pos = $pos"
+    # else
+    #     gne_devices = nothing
+    # end
+
     return Network(
         caseid,
         buses,
@@ -99,6 +111,7 @@ function parse_network(source)
         area_transfers,
         owners,
         facts,
+        # gne_devices,
     )
 end
 

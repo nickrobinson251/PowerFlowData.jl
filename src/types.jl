@@ -26,9 +26,25 @@ struct CaseID <: IDRow
     ic::Int8
     "System base MVA."
     sbase::Float64
+    "PSSE revision number (if known)."
+    rev::Union{Int,Missing}
+    """
+    Units of transformer ratings (see [`Transformers`](@ref)).
+    `xfrrat` ≤ 0 for MVA. `xfrrat` > 0 for current expressed as MVA.
+    """
+    xfrrat::Union{Int8,Missing}
+    """
+    Units of ratings of non-transformer branches (refer to Non-Transformer Branch Data).
+    `nxfrat` ≤ 0 for MVA. `nxfrat` > 0 for current expressed as MVA.
+    """
+    nxfrat::Union{Int8,Missing}
+    "System base frequency in Hertz."
+    basfrq::Union{Float64,Missing}
 end
 
-CaseID(; ic=0, sbase=100.0) = CaseID(ic, sbase)
+function CaseID(; ic=0, sbase=100.0, rev=missing, xfrrat=missing, nxfrat=missing, basfrq=missing)
+	return CaseID(ic, sbase, rev, xfrrat, nxfrat, basfrq)
+end
 
 Tables.columnnames(::CaseID) = fieldnames(CaseID)
 Tables.getcolumn(cid::CaseID, i::Int) = getfield(cid, i)
@@ -2395,6 +2411,8 @@ struct Network
     owners::Owners
     "FACTS device records."
     facts::FACTSDevices
+    # "GNE device records."
+    # gne_devices::GNEDevices
 end
 
 ###
