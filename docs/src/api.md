@@ -17,6 +17,8 @@ CaseID
 ## Buses
 ```@docs
 Buses
+Buses30
+Buses33
 ```
 
 ## Loads

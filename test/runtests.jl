@@ -9,6 +9,7 @@ using Test
 
     @testset "Infers" begin
         for T in subtypes(PowerFlowData.Records)
+            isabstracttype(T) && continue
             @inferred T()
             @inferred T(1)
         end
@@ -333,6 +334,11 @@ using Test
 
         facts = net2.facts
         @test isempty(facts)
+    end
+
+    @testset "v33 file" begin
+        net33 = parse_network("testfiles/synthetic_data_v33.RAW")
+        @test net33 isa Network
     end
 
     @testset "issues" begin

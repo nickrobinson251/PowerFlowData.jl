@@ -9,7 +9,8 @@ using Tables
 
 export parse_network
 export Network
-export CaseID, Buses, Loads, Generators, Branches, Transformers, AreaInterchanges
+export CaseID, Buses, Buses30, Buses33
+export Loads, Generators, Branches, Transformers, AreaInterchanges
 export TwoTerminalDCLines, VSCDCLines, SwitchedShunts, ImpedanceCorrections
 export MultiTerminalDCLines, MultiTerminalDCLine, DCLineID, ACConverters, DCBuses, DCLinks
 export MultiSectionLineGroups, Zones, InterAreaTransfers, Owners, FACTSDevices

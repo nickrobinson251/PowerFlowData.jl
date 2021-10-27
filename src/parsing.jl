@@ -23,7 +23,8 @@ function parse_network(source)
     bytes, pos, len = getbytes(source)
 
     caseid, pos = parse_idrow(CaseID, bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed CaseID: pos = $pos"
+    is_v33 = isequal(caseid.rev, 33)
+    @debug 1 "Parsed CaseID: rev = $(caseid.rev), pos = $pos"
 
     # Skip the 2 lines of comments
     # TODO: confirm it is always only and exactly 2 lines of comments
@@ -31,7 +32,8 @@ function parse_network(source)
     pos = next_line(bytes, pos, len)
     @debug 1 "Parsed comments: pos = $pos"
 
-    buses, pos = parse_records!(Buses(len÷1000), bytes, pos, len, OPTIONS)
+    BusesV = ifelse(is_v33, Buses33, Buses30)
+    buses::BusesV, pos::Int = parse_records!(BusesV(len÷1000), bytes, pos, len, OPTIONS)
     nbuses = length(buses)
     @debug 1 "Parsed Buses: nrows = $nbuses, pos = $pos"
 
@@ -57,9 +59,9 @@ function parse_network(source)
     vsc_dc, pos = parse_records!(VSCDCLines(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed VSCDCLines: nrows = $(length(vsc_dc)), pos = $pos"
 
-    # if ver < 31
-        switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
-        @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
+    # if !is_v33
+    switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
+    @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
     # end
 
     impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
@@ -83,7 +85,7 @@ function parse_network(source)
     facts, pos = parse_records!(FACTSDevices(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed FACTSDevices: nrows = $(length(facts)), pos = $pos"
 
-    # if ver == 33
+    # if is_v33
     #     switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
     #     @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
 

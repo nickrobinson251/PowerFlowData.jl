@@ -78,7 +78,18 @@ const LineNum = Int16
 """
     $TYPEDEF
 
-Each network bus to be represented in PSS/E is introduced through a bus data record.
+Each network bus to be represented in PSSE is introduced by a bus data record.
+The bus data record depends on the PSSE version:
+- See [`Buses30`](@ref) for PSSE v30 files.
+- See [`Buses33`](@ref) for PSSE v33 files.
+"""
+abstract type Buses <: Records end
+
+"""
+    $TYPEDEF
+
+Network bus data records (in PSSE v30 format).
+
 Each bus data record includes not only data for the basic bus properties but also includes
 information on an optionally connected shunt admittance to ground. That admittance can
 represent a shunt capacitor or a shunt reactor (both with or without a real component) or a
@@ -88,7 +99,7 @@ transformer magnetizing impedance, all of which are entered in other data catego
 # Fields
 $TYPEDFIELDS
 """
-struct Buses <: Records
+struct Buses30 <: Buses
     "Bus number (1 to 999997)."
     i::Vector{BusNum}
     """
@@ -139,6 +150,62 @@ struct Buses <: Records
     See [`Owners`](@ref).
     """
     owner::Vector{OwnerNum}
+end
+
+"""
+    $TYPEDEF
+
+Network bus data records (in PSSE v33 format).
+
+# Fields
+$TYPEDFIELDS
+"""
+struct Buses33 <: Buses
+    "Bus number (1 to 999997)."
+    i::Vector{BusNum}
+    """
+    Alphanumeric identifier assigned to bus "I".
+    The name may be up to twelve characters and must be enclosed in single quotes.
+    NAME may contain any combination of blanks, uppercase letters, numbers and special characters, but the first character must not be a minus sign.
+    """
+    name::Vector{InlineString15}
+    "Bus base voltage; entered in kV."
+    basekv::Vector{Float64}
+    """
+    Bus type code:
+    1 - load bus or other bus without any generator boundary condition.
+    2 - generator or plant bus either regulating voltage or with a fixed reactive power (Mvar).
+    A generator that reaches its reactive power limit will no longer control voltage but rather hold reactive power at its limit.
+    3 - swing bus or slack bus.
+    It has no power or reactive limits and regulates voltage at a fixed reference angle.
+    4 - disconnected or isolated bus.
+    """
+    ide::Vector{Int8}  # 1, 2, 3 or 4
+    "Area number. 1 through the maximum number of areas at the current size level."
+    area::Vector{AreaNum}
+    """
+    Zone number. 1 through the maximum number of zones at the current size level.
+    See [`Zones`](@ref).
+    """
+    zone::Vector{ZoneNum}
+    """
+    Owner number.
+    1 through the maximum number of owners at the current size level.
+    See [`Owners`](@ref).
+    """
+    owner::Vector{OwnerNum}
+    "Bus voltage magnitude; entered in pu."
+    vm::Vector{Float64}
+    "Bus voltage phase angle; entered in degrees."
+    va::Vector{Float64}
+    "Normal voltage magnitude high limit; entered in pu. `nvhi` = 1.1 by default."
+    nvhi::Vector{Float64}
+    "Normal voltage magnitude low limit, entered in pu. `nvlo` = 0.9 by default."
+    nvlo::Vector{Float64}
+    "Emergency voltage magnitude high limit; entered in pu. `evhi` = 1.1 by default."
+    evhi::Vector{Float64}
+    "Emergency voltage magnitude low limit; entered in pu. `evlo` = 0.9 by default."
+    evlo::Vector{Float64}
 end
 
 """
@@ -2461,12 +2528,13 @@ function Base.show(io::IO, ::MIME"text/plain", x::T) where {T <: IDRow}
 end
 
 Base.summary(io::IO, x::R) where {R <: Records} = print(io, "$R with $(length(x)) records")
+Base.summary(io::IO, x::R) where {R <: Buses} = print(io, "Buses with $(length(x)) records")
 
 function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
     if get(io, :compact, false)::Bool || isempty(x)
         Base.summary(io, x)
     else
-        printstyled(io, R; bold=true)
+        printstyled(io, ifelse(R <: Buses, Buses, R); bold=true)
         print(io, " with $(length(x)) records,")
         print(io, " $(length(Tables.columnnames(x))) columns:\n")
         pretty_table(
