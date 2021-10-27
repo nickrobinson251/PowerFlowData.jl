@@ -257,6 +257,16 @@ struct Loads <: Records
     See [`Owners`](@ref).
     """
     owner::Vector{OwnerNum}
+    """
+    Load scaling flag of one for a scalable load and zero for a fixed load.
+    `scale` = 1 by default.
+    """
+    scale::Vector{Union{Bool,Missing}}
+    """
+    Interruptible load flag of one for an interruptible load for zero for a non interruptible load.
+    `intrpt`=0 by default.
+    """
+    intrpt::Vector{Union{Bool,Missing}}
 end
 
 

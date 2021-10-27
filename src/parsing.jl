@@ -245,6 +245,10 @@ const N_SPECIAL = IdDict(
     # if t3, f3, ..., t11, f11 are not present, we set them to zero.
     # i.e. the last 18 = 9(t) + 9(f) columns reqire special handling.
     ImpedanceCorrections => 18,
+    # MultiSectionLineGroups can have between 1 - 9 `DUM_i` columns
+    MultiSectionLineGroups => 8,
+    # Loads have 2 extra columns in v33, compared to v30
+    Loads => 2,
 )
 
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections}}
@@ -277,11 +281,11 @@ end
 ### MultiSectionLineGroups
 ###
 
-# There can be between 1 - 9 DUM_i columns
-@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiSectionLineGroups}
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{Loads,MultiSectionLineGroups}}
     block = Expr(:block)
-    append!(block.args, _parse_values(R, 1, 4))  # I, J, ID, DUM1
-    for col in 5:fieldcount(R)
+    N = fieldcount(R) - N_SPECIAL[R]
+    append!(block.args, _parse_values(R, 1, N))  # I, J, ID, DUM1
+    for col in (N + 1):fieldcount(R)
         T = eltype(fieldtype(R, col))
         push!(block.args, :(
             if newline(code)  # TODO: improve on checking `newline` multiple times?
