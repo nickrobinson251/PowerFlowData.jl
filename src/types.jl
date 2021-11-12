@@ -53,10 +53,6 @@ Tables.getcolumn(cid::CaseID, nm::Symbol) = getfield(cid, nm)
 # So all tabular data records (buses, loads, ...) can be handled the same.
 abstract type Records end
 
-# Create a instance of a `Records` subtype, with all fields (assumed to be Vector)
-# expected to be populated with roughly `sizehint` elements
-(::Type{R})(sizehint::Integer=0) where {R <: Records} = (R(map(T -> sizehint!(T(), sizehint), fieldtypes(R))...))::R
-
 # Store data in column table so conversion to DataFrame efficient.
 Tables.istable(::Type{<:Records}) = true
 Tables.columnaccess(::Type{<:Records}) = true
@@ -456,6 +452,15 @@ struct Generators <: Records
     wpf::Vector{Union{Float64,Missing}}
 end
 
+"""
+    $TYPEDEF
+
+Each network bus to be represented in PSSE is introduced by a bus data record.
+The bus data record depends on the PSSE version:
+- See [`Branches30`](@ref) for PSSE v30 files.
+- See [`Branches33`](@ref) for PSSE v33 files.
+"""
+abstract type Branches <: Records end
 
 """
     $TYPEDEF
@@ -468,8 +473,6 @@ are entered in the same data record.
 !!! compat "Shunts connected to buses"
     In PSSE v30, to represent shunts connected to buses, that shunt data should be entered in
     the [`Buses`](@ref) data records.
-    In PSSE v33, to represent shunts connected to buses, that shunt data should be entered in
-    [`FixedShunts`](@ref) and/or [`SwitchedShunts`](@ref) data records.
 
 !!! note "Transformers"
     Branches to be modeled as transformers are not specified in this data category;
@@ -478,7 +481,7 @@ are entered in the same data record.
 # Fields
 $TYPEDFIELDS
 """
-struct Branches <: Records
+struct Branches30 <: Branches
     "Branch \"from bus\" number, or extended bus name enclosed in single quotes."
     i::Vector{BusNum}
     """
@@ -548,15 +551,133 @@ struct Branches <: Records
     """
     Owner number; 1 through the maximum number of owners at the current size level.
     Each branch may have up to four owners. See [`Owners`](@ref).
-    By default, O1 is the owner to which bus "I" is assigned and O2, O3, and O4 are zero.
+    By default, `o1` is the owner to which bus `i` is assigned and `o2`, `o3`, and `o4` are zero.
     """
-    oi::Vector{OwnerNum}
+    o1::Vector{OwnerNum}
     """
-    Fraction of total ownership assigned to owner Oi; each Fi must be positive.
-    The Fi values are normalized such that they sum to 1.0 before they are placed in the working case.
-    By default, each Fi is 1.0.
+    Fraction of total ownership assigned to owner ``O_i``; each ``F_i`` must be positive.
+    The ``fi` values are normalized such that they sum to 1.0 before they are placed in the working case.
+    By default, each `fi` is 1.0.
     """
-    fi::Vector{Float64}
+    f1::Vector{Float64}
+    o2::Vector{Union{OwnerNum,Missing}}
+    f2::Vector{Union{Float64,Missing}}
+    o3::Vector{Union{OwnerNum,Missing}}
+    f3::Vector{Union{Float64,Missing}}
+    o4::Vector{Union{OwnerNum,Missing}}
+    f4::Vector{Union{Float64,Missing}}
+end
+"""
+    $TYPEDEF
+
+In PSS/E, the basic transmission line model is an Equivalent Pi connected between network buses.
+
+Data for shunt equipment units, such as reactors, which are connected to and switched with the line,
+are entered in the same data record.
+
+!!! compat "Shunts connected to buses"
+    In PSSE v33, to represent shunts connected to buses, that shunt data should be entered in
+    [`FixedShunts`](@ref) and/or [`SwitchedShunts`](@ref) data records.
+
+!!! note "Transformers"
+    Branches to be modeled as transformers are not specified in this data category;
+    rather, they are specified in the [`Transformers`](@ref) data category.
+
+# Fields
+$TYPEDFIELDS
+"""
+struct Branches33 <: Branches
+    "Branch \"from bus\" number, or extended bus name enclosed in single quotes."
+    i::Vector{BusNum}
+    """
+    Branch "to bus" number, or extended bus name enclosed in single quotes.
+    "J" is entered as a negative number, or with a minus sign before the first character of the extended bus name,
+    to designate it as the metered end; otherwise, bus "I" is assumed to be the metered end.
+    """
+    j::Vector{BusNum}
+    """
+    One- or two-character uppercase nonblank alphanumeric branch circuit identifier;
+    the first character of CKT must not be an ampersand "&".
+    It is recommended that single circuit branches be designated as having the circuit identifier '1'.
+    CKT = '1' by default.
+    """
+    ckt::Vector{InlineString3}
+    "Branch resistance; entered in pu. A value of R must be entered for each branch."
+    r::Vector{Float64}
+    "Branch reactance; entered in pu. A nonzero value of X must be entered for each branch."
+    x::Vector{Float64}
+    "Total branch charging susceptance; entered in pu. B = 0.0 by default."
+    b::Vector{Float64}
+    """
+    First loading rating; entered in MVA.
+    If RATEA is set to 0.0, the default value, this branch will not be included in any examination of circuit loading.
+
+    Ratings are entered as:
+    ``MVA_{rated} = sqrt(3) × E_{base} × I_{rated} × 10^{-6}`` where:
+    - ``E_{base}`` is the base line-to-line voltage in volts of the buses to which the terminal of the branch is connected.
+    - ``I_{rated}`` is the branch rated phase current in amperes.
+    """
+    rate_a::Vector{Float64}
+    "Second loading rating; entered in MVA. RATEB = 0.0 by default."
+    rate_b::Vector{Float64}
+    "Third loading rating; entered in MVA. RATEC = 0.0 by default."
+    rate_c::Vector{Float64}
+    """
+    Complex admittance of the line shunt at the bus "I" end of the branch; entered in pu.
+    BI is negative for a line connected reactor and positive for line connected capacitor.
+    GI + jBI = 0.0 by default.
+    """
+    gi::Vector{Float64}
+    """
+    Complex admittance of the line shunt at the bus "I" end of the branch; entered in pu.
+    BI is negative for a line connected reactor and positive for line connected capacitor.
+    GI + jBI = 0.0 by default.
+    """
+    bi::Vector{Float64}
+    """
+    Complex admittance of the line shunt at the bus "J" end of the branch; entered in pu.
+    BJ is negative for a line connected reactor and positive for line connected capacitor.
+    GJ + jBJ = 0.0 by default.
+    """
+    gj::Vector{Float64}
+    """
+    Complex admittance of the line shunt at the bus "J" end of the branch; entered in pu.
+    BJ is negative for a line connected reactor and positive for line connected capacitor.
+    GJ + jBJ = 0.0 by default.
+    """
+    bj::Vector{Float64}
+    """
+    Initial branch status where 1 designates in-service and 0 designates out-of-service.
+    ST = 1 by default.
+    """
+    st::Vector{Bool}
+    """
+    Metered end flag.
+    * ≤1 to designate bus `i` as the metered end.
+    * ≥2 to designate bus `j` as the metered end.
+    `met` = 1 by default.
+    """
+    met::Vector{Int8}  # present in v33 but not v30 data.
+    "Line length; entered in user-selected units. LEN = 0.0 by default."
+    len::Vector{Float64}
+    """
+    Owner number; 1 through the maximum number of owners at the current size level.
+    Each branch may have up to four owners. See [`Owners`](@ref).
+    By default, `o1` is the owner to which bus `i` is assigned and `o2`, `o3`, and `o4` are zero.
+    """
+    o1::Vector{OwnerNum}
+    """
+    Fraction of total ownership assigned to owner ``O_i``; each ``F_i`` must be positive.
+    The ``fi` values are normalized such that they sum to 1.0 before they are placed in the working case.
+    By default, each `fi` is 1.0.
+    """
+    f1::Vector{Float64}
+    o2::Vector{Union{OwnerNum,Missing}}
+    f2::Vector{Union{Float64,Missing}}
+    o3::Vector{Union{OwnerNum,Missing}}
+    f3::Vector{Union{Float64,Missing}}
+    o4::Vector{Union{OwnerNum,Missing}}
+    f4::Vector{Union{Float64,Missing}}
 end
 
 ###
@@ -2568,6 +2689,36 @@ struct Network
     facts::FACTSDevices
     # "GNE device records."
     # gne_devices::GNEDevices
+end
+
+###
+### constructors
+###
+
+# Create a instance of a `Records` subtype, with all fields (assumed to be Vector)
+# expected to be populated with roughly `sizehint` elements
+# (::Type{R})(sizehint::Integer=0) where {R <: Records} = (R(map(T -> sizehint!(T(), sizehint), fieldtypes(R))...))::R
+for R in (
+    :Buses30, :Buses33,
+    :Loads,
+    :FixedShunts,
+    :Generators,
+    :Branches30, :Branches33,
+    :Transformers,
+    :AreaInterchanges,
+    :TwoTerminalDCLines,
+    :VSCDCLines,
+    :SwitchedShunts,
+    :ImpedanceCorrections,
+    :MultiTerminalDCLines, :ACConverters, :DCLinks, :DCBuses,
+    :MultiSectionLineGroups,
+    :Zones,
+    :InterAreaTransfers,
+    :Owners,
+    :FACTSDevices,
+)
+    @assert !isabstracttype(R)
+    @eval $R(sizehint::Integer=0) = $R(map(T -> sizehint!(T(), sizehint), fieldtypes($R))...)::$R
 end
 
 ###

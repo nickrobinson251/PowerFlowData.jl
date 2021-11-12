@@ -135,7 +135,7 @@ using Test
         branches = net1.branches
         @test branches.i == [111, 111, 112]
         @test branches.j == [112, -113, 113]  # negative numbers should be allowed
-        @test branches.fi == [1.0, 1.0, 1.0]
+        @test branches.f1 == [1.0, 1.0, 1.0]
         @test branches.ckt[1] == "3 "
 
         transformers = net1.transformers
@@ -246,7 +246,7 @@ using Test
         branches = net2.branches
         @test branches.i == [1, 2, 222222]
         @test branches.j == [-543210, 9, 333333]  # negative numbers should be allowed
-        @test branches.fi == [1.0, 1.0, 1.0]
+        @test branches.f1 == [1.0, 1.0, 1.0]
         @test branches.ckt[2] == "6 "
 
         transformers = net2.transformers

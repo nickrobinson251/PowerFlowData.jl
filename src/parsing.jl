@@ -33,7 +33,7 @@ function parse_network(source)
     @debug 1 "Parsed comments: pos = $pos"
 
     BusesV = ifelse(is_v33, Buses33, Buses30)
-    buses::BusesV, pos::Int = parse_records!(BusesV(len÷1000), bytes, pos, len, OPTIONS)
+    buses, pos = parse_records!(BusesV(len÷1000), bytes, pos, len, OPTIONS)
     nbuses = length(buses)
     @debug 1 "Parsed Buses: nrows = $nbuses, pos = $pos"
 
@@ -51,7 +51,8 @@ function parse_network(source)
     ngens = length(gens)
     @debug 1 "Parsed Generators: nrows = $ngens, pos = $pos"
 
-    branches, pos = parse_records!(Branches(nbuses), bytes, pos, len, OPTIONS)
+    BranchesV = ifelse(is_v33, Branches33, Branches30)
+    branches, pos = parse_records!(BranchesV(nbuses), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Branches: nrows = $(length(branches)), pos = $pos"
 
     transformers, pos = parse_records!(Transformers(ngens*2), bytes, pos, len, OPTIONS)
@@ -257,11 +258,14 @@ const N_SPECIAL = IdDict(
     MultiSectionLineGroups => 8,
     # Loads have 2 extra columns in v33 compared to v30
     Loads => 2,
-    # Generators have 1 - 4 `Oi`, `Fi` values, plus 3 extra columns in v33 compared to v30
-    Generators => 8,
+    # Generators have 1 - 4 `Oi`, `Fi` values, plus 2 extra columns in v33 compared to v30
+    Generators => 8, # 3*2 + 2
+    # Branches have 1 - 4 `Oi`, `Fi` values
+    Branches30 => 6, # 3*2
+    Branches33 => 6, # 3*2
 )
 
-@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections}}
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections, Branches}}
     block = Expr(:block)
     N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
