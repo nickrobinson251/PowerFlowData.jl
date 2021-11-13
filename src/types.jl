@@ -2453,6 +2453,7 @@ function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
         print(io, " $(length(Tables.columnnames(x))) columns:\n")
         pretty_table(
             io, x;
+            alignment_anchor_regex=Dict(0 => [r"\."]), # align floating point numbers
             compact_printing=true,
             crop=:both,
             header=collect(Symbol, Tables.columnnames(x)),
