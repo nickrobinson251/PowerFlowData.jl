@@ -16,7 +16,8 @@ export VSCDCLines, SwitchedShunts, ImpedanceCorrections
 export MultiTerminalDCLines, MultiTerminalDCLine, DCLineID, DCLineID30, DCLineID33
 export ACConverters, DCBuses, DCLinks
 export MultiSectionLineGroups, MultiSectionLineGroups30, MultiSectionLineGroups33
-export Zones, InterAreaTransfers, Owners, FACTSDevices
+export Zones, InterAreaTransfers, Owners
+export FACTSDevices, FACTSDevices30, FACTSDevices33
 
 include("debug.jl")
 include("types.jl")

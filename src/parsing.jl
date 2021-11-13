@@ -100,7 +100,8 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     owners, pos = parse_records!(Owners(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Owners: nrows = $(length(owners)), pos = $pos"
 
-    facts, pos = parse_records!(FACTSDevices(), bytes, pos, len, OPTIONS)
+    FACTSDevicesV = ifelse(is_v33, FACTSDevices33, FACTSDevices30)
+    facts, pos = parse_records!(FACTSDevicesV(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed FACTSDevices: nrows = $(length(facts)), pos = $pos"
 
     if is_v33

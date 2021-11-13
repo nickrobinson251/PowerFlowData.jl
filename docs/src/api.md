@@ -112,4 +112,6 @@ Owners
 ## FACTS Devices
 ```@docs
 FACTSDevices
+FACTSDevices30
+FACTSDevices33
 ```
