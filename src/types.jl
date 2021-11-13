@@ -2860,18 +2860,19 @@ function Base.show(io::IO, ::MIME"text/plain", x::T) where {T <: IDRow}
     print(io, T, ": ", NamedTuple(x))
 end
 
-Base.summary(io::IO, x::R) where {R <: Records} = print(io, "$R with $(length(x)) records")
-Base.summary(io::IO, x::R) where {R <: Buses} = print(io, "Buses with $(length(x)) records")
+Base.summary(io::IO, x::R) where {R <: Records} = print(io, _summary(R), " with $(length(x)) records")
+_summary(::Type{R}) where {R} = string(R)
+_summary(::Type{<:Buses}) = "Buses"
+_summary(::Type{<:Branches}) = "Branches"
+_summary(::Type{<:TwoTerminalDCLines}) = "TwoTerminalDCLines"
+_summary(::Type{<:MultiTerminalDCLines}) = "MultiTerminalDCLines"
 
 function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
     if get(io, :compact, false)::Bool || isempty(x)
         Base.summary(io, x)
     else
-        T = R <: Buses ? Buses :
-            R <: Branches ? Branches :
-            R <: TwoTerminalDCLines ? TwoTerminalDCLines :
-            R
-        printstyled(io, T; bold=true)
+        R_str = _summary(R)
+        printstyled(io, R_str; bold=true)
         print(io, " with $(length(x)) records,")
         print(io, " $(length(Tables.columnnames(x))) columns:\n")
         pretty_table(
