@@ -15,7 +15,8 @@ export TwoTerminalDCLines, TwoTerminalDCLines30, TwoTerminalDCLines33
 export VSCDCLines, SwitchedShunts, ImpedanceCorrections
 export MultiTerminalDCLines, MultiTerminalDCLine, DCLineID, DCLineID30, DCLineID33
 export ACConverters, DCBuses, DCLinks
-export MultiSectionLineGroups, Zones, InterAreaTransfers, Owners, FACTSDevices
+export MultiSectionLineGroups, MultiSectionLineGroups30, MultiSectionLineGroups33
+export Zones, InterAreaTransfers, Owners, FACTSDevices
 
 include("debug.jl")
 include("types.jl")

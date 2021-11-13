@@ -87,7 +87,8 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines{I}(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed MultiTerminalDCLines: nrows = $(length(multi_terminal_dc)), pos = $pos"
 
-    multi_section_lines, pos = parse_records!(MultiSectionLineGroups(), bytes, pos, len, OPTIONS)
+    MultiSectionLineGroupsV = is_v33 ? MultiSectionLineGroups33 : MultiSectionLineGroups30
+    multi_section_lines, pos = parse_records!(MultiSectionLineGroupsV(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed MultiSectionLineGroups: nrows = $(length(multi_section_lines)), pos = $pos"
 
     zones, pos = parse_records!(Zones(), bytes, pos, len, OPTIONS)
@@ -320,7 +321,8 @@ const N_SPECIAL = IdDict(
     # i.e. the last 18 = 9(t) + 9(f) columns reqire special handling.
     ImpedanceCorrections => 18,
     # MultiSectionLineGroups can have between 1 - 9 `DUM_i` columns
-    MultiSectionLineGroups => 8,
+    MultiSectionLineGroups30 => 8,
+    MultiSectionLineGroups33 => 8,
     # Loads have 2 extra columns in v33 compared to v30
     Loads => 2,
     # Generators have 1 - 4 `Oi`, `Fi` values, plus 2 extra columns in v33 compared to v30

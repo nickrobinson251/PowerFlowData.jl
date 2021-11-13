@@ -90,6 +90,8 @@ DCLinks
 ## Multi-Section Line Groups
 ```@docs
 MultiSectionLineGroups
+MultiSectionLineGroups30
+MultiSectionLineGroups33
 ```
 
 ## Zones
