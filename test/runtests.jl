@@ -140,7 +140,7 @@ using Test
 
         transformers = net1.transformers
         @test transformers.i == [112, 113]                     #  1st entry of 1st row
-        @test transformers.fi == [1.0, 1.0]                    # last entry of 1st row
+        @test transformers.f1 == [1.0, 1.0]                    # last entry of 1st row
         @test transformers.r1_2 == [0.032470, 0.039570]        #  1st entry of 2nd row
         @test transformers.sbase1_2 == [200.0, 200.0]          # last entry of 2nd row (T2)
         @test isequal(transformers.anstar, [missing, 1.01893]) # last entry of 2nd row (T3)
@@ -252,7 +252,7 @@ using Test
         transformers = net2.transformers
         @test length(transformers.i) == 3
         @test transformers.i == [42, 4774, 222222]            #  1st entry of 1st row
-        @test transformers.fi == [1.0, 1.0, 1.0]              # last entry of 1st row
+        @test transformers.f1 == [1.0, 1.0, 1.0]              # last entry of 1st row
         @test transformers.r1_2 == [0.0025, 0.0, 0.0005]      #  1st entry of 2nd row
         @test transformers.sbase1_2 == [100.0, 100.0, 100.0]  # last entry of 2nd row
         @test transformers.windv1 == [1.0, 1.0462, 1.0]       #  1st entry of 3rd row
@@ -264,9 +264,10 @@ using Test
         @test transformers.ckt == ["K1", "90", "B1"]          # string col
 
         # v29 testfile has only 2-winding data, so should return only 2-winding columns
-        @test length(Tables.columnnames(transformers)) == 35
-        @test size(DataFrame(transformers)) == (3, 35)
-        @test size(transformers) == (3, 35)
+        ncols_expected = 43
+        @test length(Tables.columnnames(transformers)) == ncols_expected
+        @test size(DataFrame(transformers)) == (3, ncols_expected)
+        @test size(transformers) == (3, ncols_expected)
         @test length(transformers) == 3
 
         interchanges = net2.interchanges

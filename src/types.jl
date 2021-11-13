@@ -794,13 +794,25 @@ struct Transformers <: Records
     Each transformer may have up to four owners. See [`Owners`](@ref).
     By default, O1 is the owner to which bus "I" is assigned
     """
-    oi::Vector{OwnerNum}
+    o1::Vector{OwnerNum}
     """
     The fraction of total ownership assigned to owner `Oi`; each Fi must be positive.
     The Fi values are normalized such that they sum to 1.0 before they are placed in the working case.
     By default, each `fi` is 1.0.
     """
-    fi::Vector{Float64}
+    f1::Vector{Float64}
+    o2::Vector{Union{OwnerNum,Missing}}
+    f2::Vector{Union{Float64,Missing}}
+    o3::Vector{Union{OwnerNum,Missing}}
+    f3::Vector{Union{Float64,Missing}}
+    o4::Vector{Union{OwnerNum,Missing}}
+    f4::Vector{Union{Float64,Missing}}
+    """
+    Alphanumeric identifier specifying vector group based on transformer winding connections and phase angles.
+    `vecgrp` value is used for information purpose only.
+    `vecgrp` is 12 blanks by default.
+    """
+    vecgrp::Vector{Union{InlineString15,Missing}}
     # second row
     """
     The measured impedance of the transformer between the buses to which its first and second
@@ -998,6 +1010,13 @@ struct Transformers <: Records
     cr1::Vector{Float64}
     "See `cr1` for details."
     cx1::Vector{Float64}
+    """
+    Winding connection angle in degrees; used when `cod1` is 5.
+    There are no restrictions on the value specified for `cnxa1`;
+    if it is outside of the range from -90.0 to +90.0, `cnxa1` is normalized to within this range.
+    `cnxa1` = 0.0 by default.
+    """
+    cnxa1::Vector{Union{Float64,Missing}}
     # fourth row
     """
     When `cw` is 1, `windv2` is the winding two off-nominal turns ratio in pu of winding two bus base voltage,
@@ -1130,6 +1149,13 @@ struct Transformers <: Records
     _Ignored for a two-winding transformer._
     """
     cx2::Vector{Union{Float64, Missing}}
+    """
+    Winding connection angle in degrees; used when `cod2` is 5.
+    There are no restrictions on the value specified for `cnxa2`;
+    if it is outside of the range from -90.0 to +90.0, `cnxa2` is normalized to within this range.
+    `cnxa2` = 0.0 by default.
+    """
+    cnxa2::Vector{Union{Float64,Missing}}
     # fifth row, only 3-winding transformers
     """
     When `cw` is 1, `windv3` is the winding three off-nominal turns ratio in pu of winding three bus base voltage,
@@ -1263,6 +1289,13 @@ struct Transformers <: Records
     _Ignored for a two-winding transformer._
     """
     cx3::Vector{Union{Float64, Missing}}
+    """
+    Winding connection angle in degrees; used when `cod3` is 5.
+    There are no restrictions on the value specified for `cnxa3`;
+    if it is outside of the range from -90.0 to +90.0, `cnxa3` is normalized to within this range.
+    `cnxa3` = 0.0 by default.
+    """
+    cnxa3::Vector{Union{Float64,Missing}}
 end
 
 # Constants for Transformers data.
@@ -1270,11 +1303,15 @@ end
 # Transformers data is a bit special, as records have 2 possible schemas
 # see https://github.com/nickrobinson251/PowerFlowData.jl/issues/17
 #
-# Each two-winding transformer ("T2") is 4 lines with (14, 3, 16, 2) columns each, and
-# each three-winding transformer ("T3") is 5 lines with (14, 11, 16, 16, 16) columns each.
-# `TX_COLS[i]` is the (expected) number of columns on line i of X-winding transformer data.
-const T2_COLS = (14,  3, 16,  2)
-const T3_COLS = (14, 11, 16, 16, 16)
+# Each two-winding transformer ("T2") is 4 lines with (20, 3, 16, 2) columns each in v30,
+# or (21, 3, 17, 2) columns each in v33.
+# In both cases, the o2,f2,o3,f3,o4,f4 on row 1 may or may not be present.
+# Each three-winding transformer ("T3") is 5 lines with (14, 11, 16, 16, 16) columns each in v30,
+# or (15, 11, 17, 17, 17) columns each in v33.
+# `TX_COLS[i]` is the (expected) number of columns on line i of X-winding transformer data (in v33).
+const T2_COLS = (21,  3, 17,  2)
+const T3_COLS = (21, 11, 17, 17, 17)
+@assert sum(T3_COLS) == fieldcount(Transformers)
 
 # The "columns" (fields) which come at the end of a line in the data.
 const EOL_COLS = cumsum(T3_COLS)
@@ -2321,7 +2358,6 @@ struct MultiTerminalDCLines <: Records
 
     # Avoid ambiguity with generic 1-arg Records constructor
     MultiTerminalDCLines(lines::AbstractVector) = new(lines)
-    MultiTerminalDCLines() = new(Vector{MultiTerminalDCLine}())
 end
 
 ###
@@ -2774,7 +2810,8 @@ function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
     if get(io, :compact, false)::Bool || isempty(x)
         Base.summary(io, x)
     else
-        printstyled(io, ifelse(R <: Buses, Buses, R); bold=true)
+        T = R <: Buses ? Buses : R <: Branches ? Branches : R
+        printstyled(io, T; bold=true)
         print(io, " with $(length(x)) records,")
         print(io, " $(length(Tables.columnnames(x))) columns:\n")
         pretty_table(

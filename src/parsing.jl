@@ -20,6 +20,7 @@ getbytes(source) = getbytes(read(source))
 Read a PSS/E-format `.raw` Power Flow Data file and return a [`Network`](@ref) object.
 """
 function parse_network(source)
+    @debug 1 "source = $source"
     bytes, pos, len = getbytes(source)
 
     caseid, pos = parse_idrow(CaseID, bytes, pos, len, OPTIONS)
@@ -209,17 +210,63 @@ function _parse_values(::Type{R}, a::Int, b::Int) where {R <: Records}
     return exprs
 end
 
+function _parse_maybemissing(R, col)
+    T = eltype(fieldtype(R, col))
+    return quote
+        if newline(code)
+            push!(getfield(rec, $col), missing)
+        else
+            (rec, pos, code) = parse_value!(rec, $col, $T, bytes, pos, len, options)
+        end
+    end
+end
+
+function _parse_maybemissing(R, col1, col2)
+    T1 = eltype(fieldtype(R, col1))
+    T2 = eltype(fieldtype(R, col2))
+    return quote
+        if newline(code)
+            push!(getfield(rec, $col1), missing)
+            push!(getfield(rec, $col2), missing)
+        else
+            (rec, pos, code) = parse_value!(rec, $col1, $T1, bytes, pos, len, options)
+            (rec, pos, code) = parse_value!(rec, $col2, $T2, bytes, pos, len, options)
+        end
+    end
+end
+
+function _parse_maybezero(R, col1, col2)
+    T1 = eltype(fieldtype(R, col1))
+    T2 = eltype(fieldtype(R, col2))
+    return quote
+        if newline(code)
+            push!(getfield(rec, $col1), zero($T1))
+            push!(getfield(rec, $col2), zero($T2))
+        else
+            (rec, pos, code) = parse_value!(rec, $col1, $T1, bytes, pos, len, options)
+            (rec, pos, code) = parse_value!(rec, $col2, $T2, bytes, pos, len, options)
+        end
+    end
+end
+
 function _parse_t2()
     block = Expr(:block)
     append!(block.args, _setmissing(EOL_COLS[1]+1+T2_COLS[2], EOL_COLS[2]))
-    append!(block.args, _parse_values(Transformers, EOL_COLS[2]+1, EOL_COLS[3]+T2_COLS[4]))
+    append!(block.args, _parse_values(Transformers, EOL_COLS[2]+1, EOL_COLS[3]-1))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[3]))
+    append!(block.args, _parse_values(Transformers, EOL_COLS[3]+1, EOL_COLS[3]+T2_COLS[4]))
     append!(block.args, _setmissing(EOL_COLS[3]+1+T2_COLS[4], EOL_COLS[5]))
     return block
 end
 
 function _parse_t3()
     block = Expr(:block)
-    append!(block.args, _parse_values(Transformers, EOL_COLS[1]+1+T2_COLS[2], EOL_COLS[5]))
+    append!(block.args, _parse_values(Transformers, EOL_COLS[1]+1+T2_COLS[2], EOL_COLS[3]-1))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[3]))
+    append!(block.args, _parse_values(Transformers, EOL_COLS[3]+1, EOL_COLS[4]-1))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[4]))
+    append!(block.args, _parse_values(Transformers, EOL_COLS[4]+1, EOL_COLS[5]-1))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[5]))
     return block
 end
 
@@ -234,7 +281,16 @@ end
 # This means T2 data with a comment after the last entry on line 2 will fool us.
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Transformers}
     block = Expr(:block)
-    append!(block.args, _parse_values(R, 1, EOL_COLS[1]+T2_COLS[2]))
+    # parse row 1
+    append!(block.args, _parse_values(R, 1, EOL_COLS[1]-7))
+    # parse possibly missing o2,f2,o3,f3,o4,f4
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[1]-6, EOL_COLS[1]-5))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[1]-4, EOL_COLS[1]-3))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[1]-2, EOL_COLS[1]-1))
+    push!(block.args, _parse_maybemissing(R, EOL_COLS[1]))  # last col only in v33 data (not v30)
+    # parse first part of row 2
+    append!(block.args, _parse_values(R, EOL_COLS[1]+1, EOL_COLS[1]+T2_COLS[2]))
+    # now we can detect if it is two-winding or three-winding data
     push!(block.args, :(newline(code) ? $(_parse_t2()) : $(_parse_t3())))
     push!(block.args, :(return rec, pos))
     # @show block
@@ -272,17 +328,7 @@ const N_SPECIAL = IdDict(
     coln = N + 1
     colb = N + 2
     for _ in 1:(N_SPECIAL[R] ÷ 2)
-        Tn = eltype(fieldtype(R, coln))
-        Tb = eltype(fieldtype(R, colb))
-        push!(block.args, :(
-            if newline(code)  # TODO: improve on checking `newline` multiple times?
-                push!(getfield(rec, $coln), zero($Tn))
-                push!(getfield(rec, $colb), zero($Tb))
-            else
-                (rec, pos, code) = parse_value!(rec, $coln, $Tn, bytes, pos, len, options)
-                (rec, pos, code) = parse_value!(rec, $colb, $Tb, bytes, pos, len, options)
-            end
-        ))
+        push!(block.args, _parse_maybezero(R, coln, colb))
         coln += 2
         colb += 2
     end
@@ -302,14 +348,7 @@ end
     N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
     for col in (N + 1):fieldcount(R)
-        T = eltype(fieldtype(R, col))
-        push!(block.args, :(
-            if newline(code)  # TODO: improve on checking `newline` multiple times?
-                push!(getfield(rec, $col), missing)
-            else
-                (rec, pos, code) = parse_value!(rec, $col, $T, bytes, pos, len, options)
-            end
-        ))
+        push!(block.args, _parse_maybemissing(R, col))
     end
     push!(block.args, :(return rec, pos))
     # @show block
