@@ -363,7 +363,7 @@ struct Generators <: Records
     ireg::Vector{BusNum}
     """
     Total MVA base of the units represented by this machine; entered in MVA.
-    This quantity is not needed in normal power flow and equivalent construction work,
+    This quantity is not needed in normal power flow and equivalent onstruction work,
     but is required for switching studies, fault analysis, and dynamic simulation.
     MBASE = system base MVA by default.
     """
@@ -2105,56 +2105,83 @@ end
 # `Network`, with a `DCLineID` (`CaseID`) and 3 `Records` (`ACConverters, `DCBuses`, `DCLinks`)
 
 """
-	$TYPEDEF
+    $TYPEDEF
 
-# Fields
-$TYPEDFIELDS
+The DCLineID data record depends on the PSSE version:
+- See [`DCLineID30`](@ref) for PSSE v30 files.
+- See [`DCLineID33`](@ref) for PSSE v33 files.
 """
-struct DCLineID <: IDRow
-    "Multi-terminal DC line number."
-    i::LineNum
-    "Number of AC converter station buses in multi-terminal DC line `i`. No default."
-    nconv::Int8
-    "Number of DC buses in multi-terminal DC line `i` (`nconv` < `ndcbs`). No default."
-    ndcbs::Int8
-    "Number of DC links in multi-terminal DC line `i`. No default."
-    ndcln::Int
+abstract type DCLineID <: IDRow end
+
+for v in (30, 33)
+    T = Symbol(:DCLineID, v)
+    firstdoc, firstcol = if v == 30
+        :("Multi-terminal DC line number."),
+        :(i::LineNum)
+    else
+        :("""
+        The non-blank alphanumeric identifier assigned to this DC line.
+        Each multi-terminal DC line must have a unique `name.
+        `name` may be up to twelve characters and may contain any combination of blanks, uppercase letters,
+        numbers and special characters. name must be enclosed in single or double quotes if it contains any
+        blanks or special characters. No default allowed.
+        """),
+        :(name::InlineString15)
+    end
+    @eval begin
     """
-    Control mode
-    * 0 - blocked
-    * 1 - power
-    * 2 - current
-    `mdc` = 0 by default.
+        $TYPEDEF
+
+    # Fields
+    $TYPEDFIELDS
     """
-    mdc::Int8 # 0, 1, or 2
-    """
-    Bus number, or extended bus name enclosed in single quotes, of the AC converter station
-    bus that controls DC voltage on the positive pole of multi-terminal DC line `i`.
-    Bus `vconv` must be a positive pole inverter. No default.
-    """
-    vconv::BusNum
-    """
-    Mode switch DC voltage; entered in kV.
-    When any inverter DC voltage magnitude falls below this value and the line is in power
-    control mode (i.e. `mdc` = 1), the line switches to current control mode with converter
-    current setpoints corresponding to their desired powers at scheduled DC voltage.
-    `vcmod` = 0.0 by default.
-    """
-    vcmod::Float64
-    """
-    Bus number, or extended bus name enclosed in single quotes, of the AC converter station
-    bus that controls DC voltage on the negative pole of multi-terminal DC line `i`.
-    If any negative pole converters are specified (see below), bus `vconvn` must be a
-    negative pole inverter. If the negative pole is not being modeled, `vconvn` must be
-    specified as zero. `vconvn` = 0 by default.
-    """
-    vconvn::BusNum
+    struct $T <: DCLineID
+        $firstdoc
+        $firstcol
+        "Number of AC converter station buses in multi-terminal DC line `i`. No default."
+        nconv::Int8
+        "Number of DC buses in multi-terminal DC line `i` (`nconv` < `ndcbs`). No default."
+        ndcbs::Int8
+        "Number of DC links in multi-terminal DC line `i`. No default."
+        ndcln::Int
+        """
+        Control mode
+        * 0 - blocked
+        * 1 - power
+        * 2 - current
+        `mdc` = 0 by default.
+        """
+        mdc::Int8 # 0, 1, or 2
+        """
+        Bus number, or extended bus name enclosed in single quotes, of the AC converter station
+        bus that controls DC voltage on the positive pole of multi-terminal DC line `i`.
+        Bus `vconv` must be a positive pole inverter. No default.
+        """
+        vconv::BusNum
+        """
+        Mode switch DC voltage; entered in kV.
+        When any inverter DC voltage magnitude falls below this value and the line is in power
+        control mode (i.e. `mdc` = 1), the line switches to current control mode with converter
+        current setpoints corresponding to their desired powers at scheduled DC voltage.
+        `vcmod` = 0.0 by default.
+        """
+        vcmod::Float64
+        """
+        Bus number, or extended bus name enclosed in single quotes, of the AC converter station
+        bus that controls DC voltage on the negative pole of multi-terminal DC line `i`.
+        If any negative pole converters are specified (see below), bus `vconvn` must be a
+        negative pole inverter. If the negative pole is not being modeled, `vconvn` must be
+        specified as zero. `vconvn` = 0 by default.
+        """
+        vconvn::BusNum
+    end
+
+    # Accept arguments as keywords  to get both a `repr` that's both pretty and parseable.
+    $T(; kwargs...) = $T(values(kwargs)...)
+    end # eval
 end
 
-# Accept arguments as keywords  to get both a `repr` that's both pretty and parseable.
-DCLineID(; kwargs...) = DCLineID(values(kwargs)...)
-
-Tables.columnnames(::DCLineID) = fieldnames(DCLineID)
+Tables.columnnames(::T) where T<:DCLineID = fieldnames(T)
 Tables.getcolumn(dcln::DCLineID, i::Int) = getfield(dcln, i)
 Tables.getcolumn(dcln::DCLineID, nm::Symbol) = getfield(dcln, nm)
 
@@ -2378,12 +2405,14 @@ The following are notes on multi-terminal links:
 # Fields
 $TYPEDFIELDS
 """
-struct MultiTerminalDCLines <: Records
+struct MultiTerminalDCLines{I<:DCLineID} <: Records
     lines::Vector{MultiTerminalDCLine}
 
     # Avoid ambiguity with generic 1-arg Records constructor
-    MultiTerminalDCLines(lines::AbstractVector) = new(lines)
+    MultiTerminalDCLines{I}(lines::AbstractVector) where I = new{I}(lines)
+    MultiTerminalDCLines{I}(sizehint::Integer=0) where I = new{I}(sizehint!(MultiTerminalDCLine[], sizehint))
 end
+MultiTerminalDCLines(args...) = MultiTerminalDCLines{DCLineID30}(args...)
 
 ###
 ### MultiSectionLineGroups
@@ -2773,7 +2802,7 @@ for R in (
     :VSCDCLines,
     :SwitchedShunts,
     :ImpedanceCorrections,
-    :MultiTerminalDCLines, :ACConverters, :DCLinks, :DCBuses,
+    :ACConverters, :DCLinks, :DCBuses,
     :MultiSectionLineGroups,
     :Zones,
     :InterAreaTransfers,

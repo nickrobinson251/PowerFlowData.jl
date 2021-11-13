@@ -83,7 +83,8 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed ImpedanceCorrections: nrows = $(length(impedance_corrections)), pos = $pos"
 
-    multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines(), bytes, pos, len, OPTIONS)
+    I = is_v33 ? DCLineID33 : DCLineID30
+    multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines{I}(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed MultiTerminalDCLines: nrows = $(length(multi_terminal_dc)), pos = $pos"
 
     multi_section_lines, pos = parse_records!(MultiSectionLineGroups(), bytes, pos, len, OPTIONS)
@@ -367,8 +368,8 @@ end
 ### MultiTerminalDCLines
 ###
 
-function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiTerminalDCLines}
-    line_id, pos = parse_idrow(DCLineID, bytes, pos, len, options)
+function parse_row!(rec::R, bytes, pos, len, options) where {I, R <: MultiTerminalDCLines{I}}
+    line_id, pos = parse_idrow(I, bytes, pos, len, options)
 
     nconv = line_id.nconv
     converters = ACConverters(nconv)

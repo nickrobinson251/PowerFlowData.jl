@@ -13,7 +13,8 @@ export CaseID, Buses, Buses30, Buses33, Branches, Branches30, Branches33
 export FixedShunts, Loads, Generators, Transformers, AreaInterchanges
 export TwoTerminalDCLines, TwoTerminalDCLines30, TwoTerminalDCLines33
 export VSCDCLines, SwitchedShunts, ImpedanceCorrections
-export MultiTerminalDCLines, MultiTerminalDCLine, DCLineID, ACConverters, DCBuses, DCLinks
+export MultiTerminalDCLines, MultiTerminalDCLine, DCLineID, DCLineID30, DCLineID33
+export ACConverters, DCBuses, DCLinks
 export MultiSectionLineGroups, Zones, InterAreaTransfers, Owners, FACTSDevices
 
 include("debug.jl")

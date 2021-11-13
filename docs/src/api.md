@@ -80,6 +80,8 @@ ImpedanceCorrections
 MultiTerminalDCLines
 MultiTerminalDCLine
 DCLineID
+DCLineID30
+DCLineID33
 ACConverters
 DCBuses
 DCLinks
