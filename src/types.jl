@@ -2712,6 +2712,8 @@ common table operations see [TableOperations.jl](https://github.com/JuliaData/Ta
 $TYPEDFIELDS
 """
 struct Network
+    "Version of the PSS/E data version given or detected when parsing."
+    version::Int8
     "Case identification data."
     caseid::CaseID
     "Bus records."
@@ -2789,7 +2791,8 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", network::T) where {T <: Network}
     show(io, mime, T)
     get(io, :compact, false)::Bool && return nothing
-    records = (getfield(network, i) for i in 1:fieldcount(T))
+    print(io, " (v$(network.version))")
+    records = (getfield(network, i) for i in 2:fieldcount(T))  # version is field 1
     nrec = count(!isnothing, records)
     print(io, " with $nrec data categories:")
     io_compact = IOContext(io, :compact => true)

@@ -23,13 +23,15 @@ The version of the PSS/E format can be specified with the `v` keyword, like `v=3
 or else it will be automatically detected when parsing the file.
 """
 function parse_network(source; v::Union{Integer,Nothing}=nothing)
-    @debug 1 "source = $source"
+    @debug 1 "source = $source, v = $v"
     bytes, pos, len = getbytes(source)
 
     caseid, pos = parse_idrow(CaseID, bytes, pos, len, OPTIONS)
-    rev = something(v, caseid.rev)
-    is_v33 = isequal(rev, 33)
     @debug 1 "Parsed CaseID: rev = $(caseid.rev), pos = $pos"
+    # when `v` not given, if `caseid.rev` missing we assume it is because data is v30 format
+    version = something(v, coalesce(caseid.rev, 30))
+    is_v33 = version == 33
+    @debug 1 "Set version = $version"
 
     # Skip the 2 lines of comments
     # TODO: confirm it is always only and exactly 2 lines of comments
@@ -109,6 +111,7 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     end
 
     return Network(
+        version,
         caseid,
         buses,
         loads,
