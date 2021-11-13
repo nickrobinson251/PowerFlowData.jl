@@ -2901,8 +2901,6 @@ struct Network
     owners::Owners
     "FACTS device records."
     facts::FACTSDevices
-    # "GNE device records."
-    # gne_devices::GNEDevices
 end
 
 ###

@@ -107,10 +107,6 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     if is_v33
         switched_shunts, pos = parse_records!(SwitchedShunts33(nbuses÷11), bytes, pos, len, OPTIONS)
         @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
-    #     gne_devices, pos = parse_records!(GNEDevices(), bytes, pos, len, OPTIONS)
-    #     @debug 1 "Parsed SwitchedShunts: nrows = $(length(gne_devices)), pos = $pos"
-    # else
-    #     gne_devices = nothing
     end
 
     return Network(
