@@ -68,6 +68,8 @@ VSCDCLines
 ## Switched Shunts
 ```@docs
 SwitchedShunts
+SwitchedShunts30
+SwitchedShunts33
 ```
 
 ## Transformer Impedance Corrections

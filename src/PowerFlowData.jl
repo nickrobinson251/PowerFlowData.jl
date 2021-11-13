@@ -11,8 +11,9 @@ export parse_network
 export Network
 export CaseID, Buses, Buses30, Buses33, Branches, Branches30, Branches33
 export FixedShunts, Loads, Generators, Transformers, AreaInterchanges
+export SwitchedShunts, SwitchedShunts30, SwitchedShunts33
 export TwoTerminalDCLines, TwoTerminalDCLines30, TwoTerminalDCLines33
-export VSCDCLines, SwitchedShunts, ImpedanceCorrections
+export VSCDCLines, ImpedanceCorrections
 export MultiTerminalDCLines, MultiTerminalDCLine, DCLineID, DCLineID30, DCLineID33
 export ACConverters, DCBuses, DCLinks
 export MultiSectionLineGroups, MultiSectionLineGroups30, MultiSectionLineGroups33

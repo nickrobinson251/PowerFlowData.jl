@@ -1917,116 +1917,156 @@ end
 """
     $TYPEDEF
 
-Represents switched shunt devices, in the form of capacitors and/or reactors on a network bus.
-
-The switched shunt elements at a bus may consist entirely of blocks of shunt reactors
-(each Bi is a negative quantity) or entirely of blocks of capacitor banks
-(each Bi is a positive quantity). Any bus can have both switched capacitors and reactors.
-
-Each network bus to be represented in PSS/E with switched shunt admittance devices must have
-a switched shunt data record specified for it. The switched shunts are represented with up to
-eight blocks of admittance, each one of which consists of up to nine steps of the specified
-block admittance.
-
-# Fields
-$TYPEDFIELDS
+The SwitchedShunts data record depends on the PSSE version:
+- See [`SwitchedShunts30`](@ref) for PSSE v30 files.
+- See [`SwitchedShunts33`](@ref) for PSSE v33 files.
 """
-struct SwitchedShunts <: Records
-    """
-    Bus number, or extended bus name enclosed in single quotes.
-    """
-    i::Vector{BusNum}
-    """
-    Control mode:
-    * 0 - fixed
-    * 1 - discrete adjustment, controlling voltage locally or at bus `swrem`
-    * 2 - continuous adjustment, controlling voltage locally or at bus `swrem`
-    * 3 - discrete adjustment, controlling reactive power output of the plant at bus `swrem`
-    * 4 - discrete adjustment, controlling reactive power output of the VSC DC line converter
-      at bus `swrem` of the VSC DC line whose name is specified as `rmidnt`
-    * 5 - discrete adjustment, controlling admittance setting of the switched shunt at bus `swrem`
-    `modsw` = 1 by default.
-    """
-    modsw::Vector{Int8} # 0, 1, 2, 3, 4, or 5
-    """
-    When `modsw` is 1 or 2, the controlled voltage upper limit; entered in pu.
-    When `modsw` is 3, 4 or 5, the controlled reactive power range upper limit; entered in pu
-    of the total reactive power range of the controlled voltage controlling device.
-    `vswhi` is not used when `modsw` is 0.
-    `vswhi` = 1.0 by default.
-    """
-    vswhi::Vector{Float64}
-    """
-    When `modsw` is 1 or 2, the controlled voltage lower limit; entered in pu.
-    When `modsw` is 3, 4 or 5, the controlled reactive power range lower limit; entered in pu
-    of the total reactive power range of the controlled voltage controlling device.
-    `vswlo` is not used when `modsw` is 0.
-    `vswlo` = 1.0 by default.
-    """
-    vswlo::Vector{Float64}
-    """
-    Bus number, or extended bus name enclosed in single quotes, of the bus whose voltage or
-    connected equipment reactive power output is controlled by this switched shunt.
-    * When `modsw` is 1 or 2, `swrem` is entered as 0 if the switched shunt is to regulate its own voltage;
-      otherwise, `swrem` specifies the remote type one or two bus whose voltage is to be regulated by this switched shunt.
-    * When `modsw` is 3, `swrem` specifies the type two or three bus whose plant reactive power output is to be regulated by this switched shunt.
-      Set `swrem` to "I" if the switched shunt and the plant which it controls are connected to the same bus.
-    * When `modsw` is 4, `swrem` specifies the converter bus of a VSC dc line whose converter reactive power output is to be regulated by this switched shunt.
-      Set `swrem` to "I" if the switched shunt and the VSC dc line converter which it controls are connected to the same bus.
-    * When `modsw` is 5, `swrem` specifies the remote bus to which the switched shunt whose admittance setting is to be regulated by this switched shunt is connected.
-    * `swrem` is not used when `modsw` is 0.
-    `swrem` = 0 by default.
-    """
-    swrem::Vector{BusNum}
-    """
-    Percent of the total Mvar required to hold the voltage at the bus controlled by bus `I`
-    that are to be contributed by this switched shunt; `rmpct` must be positive.
+abstract type SwitchedShunts <: Records end
 
-    `rmpct` is needed only if `swrem` specifies a valid remote bus and there is more than one
-    local or remote voltage controlling device (plant, switched shunt, FACTS device shunt element,
-    or VSC DC line converter) controlling the voltage at bus `swrem` to a setpoint, or `swrem` is
-    zero but bus I is the controlled bus, local or remote, of one or more other setpoint mode
-    voltage controlling devices. Only used if `modsw` = 1 or 2.
-    `rmpct` = 100.0 by default.
+for v in (30, 33)
+    T = Symbol(:SwitchedShunts, v)
+    adjm_doc, adjm_col = if v == 33
+        :("""
+        Adjustment method:
+        * 0 - steps and blocks are switched on in input order, and off in reverse input order;
+          this adjustment method was the only method available prior to PSS®E-32.0.
+        * 1 - steps and blocks are switched on and off such that the next highest
+          (or lowest, as appropriate) total admittance is achieved.
+        `adjm` = 0 by default.
+        """),
+        :(adjm::Vector{Bool})
+    else
+        :(""), :("")
+    end
+    stat_doc, stat_col = if v == 33
+        :("""
+        Initial switched shunt status of one for in-service and zero for out-of-service.
+        `stat` = 1 by default.
+        """),
+        :(stat::Vector{Bool})
+    else
+        :(""), :("")
+    end
+    @eval begin
     """
-    rmpct::Vector{Float64}
+        $TYPEDEF
+
+    Represents switched shunt devices, in the form of capacitors and/or reactors on a network bus.
+
+    The switched shunt elements at a bus may consist entirely of blocks of shunt reactors
+    (each Bi is a negative quantity) or entirely of blocks of capacitor banks
+    (each Bi is a positive quantity). Any bus can have both switched capacitors and reactors.
+
+    Each network bus to be represented in PSS/E with switched shunt admittance devices must have
+    a switched shunt data record specified for it. The switched shunts are represented with up to
+    eight blocks of admittance, each one of which consists of up to nine steps of the specified
+    block admittance.
+
+    # Fields
+    $TYPEDFIELDS
     """
-    When `modsw` is 4, the name of the VSC DC line whose converter bus is specified in `swrem`.
-    `rmidnt` is not used for other values of `modsw`.
-    `rmidnt` is a blank name by default.
-    """
-    rmidnt::Vector{InlineString15}
-    """
-    Initial switched shunt admittance; entered in Mvar at unity voltage.
-    `binit` = 0.0 by default.
-    """
-    binit::Vector{Float64}
-    """
-    Number of steps for block i.
-    The first zero value of N_i or B_i is interpreted as the end of the switched shunt blocks
-    for bus I.
-    `ni` = 0 by default.
-    """
-    n1::Vector{Int32}
-    """
-    Admittance increment for each of N_i steps in block i; entered in Mvar at unity voltage.
-    `bi` = 0.0 by default.
-    """
-    b1::Vector{Float64}
-    n2::Vector{Int32}
-    b2::Vector{Float64}
-    n3::Vector{Int32}
-    b3::Vector{Float64}
-    n4::Vector{Int32}
-    b4::Vector{Float64}
-    n5::Vector{Int32}
-    b5::Vector{Float64}
-    n6::Vector{Int32}
-    b6::Vector{Float64}
-    n7::Vector{Int32}
-    b7::Vector{Float64}
-    n8::Vector{Int32}
-    b8::Vector{Float64}
+    struct $T <: SwitchedShunts
+        """
+        Bus number, or extended bus name enclosed in single quotes.
+        """
+        i::Vector{BusNum}
+        """
+        Control mode:
+        * 0 - fixed
+        * 1 - discrete adjustment, controlling voltage locally or at bus `swrem`
+        * 2 - continuous adjustment, controlling voltage locally or at bus `swrem`
+        * 3 - discrete adjustment, controlling reactive power output of the plant at bus `swrem`
+        * 4 - discrete adjustment, controlling reactive power output of the VSC DC line converter
+        at bus `swrem` of the VSC DC line whose name is specified as `rmidnt`
+        * 5 - discrete adjustment, controlling admittance setting of the switched shunt at bus `swrem`
+        `modsw` = 1 by default.
+        """
+        modsw::Vector{Int8} # 0, 1, 2, 3, 4, or 5
+        $adjm_doc
+        $adjm_col
+        $stat_doc
+        $stat_col
+        """
+        When `modsw` is 1 or 2, the controlled voltage upper limit; entered in pu.
+        When `modsw` is 3, 4 or 5, the controlled reactive power range upper limit; entered in pu
+        of the total reactive power range of the controlled voltage controlling device.
+        `vswhi` is not used when `modsw` is 0.
+        `vswhi` = 1.0 by default.
+        """
+        vswhi::Vector{Float64}
+        """
+        When `modsw` is 1 or 2, the controlled voltage lower limit; entered in pu.
+        When `modsw` is 3, 4 or 5, the controlled reactive power range lower limit; entered in pu
+        of the total reactive power range of the controlled voltage controlling device.
+        `vswlo` is not used when `modsw` is 0.
+        `vswlo` = 1.0 by default.
+        """
+        vswlo::Vector{Float64}
+        """
+        Bus number, or extended bus name enclosed in single quotes, of the bus whose voltage or
+        connected equipment reactive power output is controlled by this switched shunt.
+        * When `modsw` is 1 or 2, `swrem` is entered as 0 if the switched shunt is to regulate its own voltage;
+        otherwise, `swrem` specifies the remote type one or two bus whose voltage is to be regulated by this switched shunt.
+        * When `modsw` is 3, `swrem` specifies the type two or three bus whose plant reactive power output is to be regulated by this switched shunt.
+        Set `swrem` to "I" if the switched shunt and the plant which it controls are connected to the same bus.
+        * When `modsw` is 4, `swrem` specifies the converter bus of a VSC dc line whose converter reactive power output is to be regulated by this switched shunt.
+        Set `swrem` to "I" if the switched shunt and the VSC dc line converter which it controls are connected to the same bus.
+        * When `modsw` is 5, `swrem` specifies the remote bus to which the switched shunt whose admittance setting is to be regulated by this switched shunt is connected.
+        * `swrem` is not used when `modsw` is 0.
+        `swrem` = 0 by default.
+        """
+        swrem::Vector{BusNum}
+        """
+        Percent of the total Mvar required to hold the voltage at the bus controlled by bus `I`
+        that are to be contributed by this switched shunt; `rmpct` must be positive.
+
+        `rmpct` is needed only if `swrem` specifies a valid remote bus and there is more than one
+        local or remote voltage controlling device (plant, switched shunt, FACTS device shunt element,
+        or VSC DC line converter) controlling the voltage at bus `swrem` to a setpoint, or `swrem` is
+        zero but bus I is the controlled bus, local or remote, of one or more other setpoint mode
+        voltage controlling devices. Only used if `modsw` = 1 or 2.
+        `rmpct` = 100.0 by default.
+        """
+        rmpct::Vector{Float64}
+        """
+        When `modsw` is 4, the name of the VSC DC line whose converter bus is specified in `swrem`.
+        `rmidnt` is not used for other values of `modsw`.
+        `rmidnt` is a blank name by default.
+        """
+        rmidnt::Vector{InlineString15}
+        """
+        Initial switched shunt admittance; entered in Mvar at unity voltage.
+        `binit` = 0.0 by default.
+        """
+        binit::Vector{Float64}
+        """
+        Number of steps for block i.
+        The first zero value of N_i or B_i is interpreted as the end of the switched shunt blocks
+        for bus I.
+        `ni` = 0 by default.
+        """
+        n1::Vector{Int32}
+        """
+        Admittance increment for each of N_i steps in block i; entered in Mvar at unity voltage.
+        `bi` = 0.0 by default.
+        """
+        b1::Vector{Float64}
+        n2::Vector{Int32}
+        b2::Vector{Float64}
+        n3::Vector{Int32}
+        b3::Vector{Float64}
+        n4::Vector{Int32}
+        b4::Vector{Float64}
+        n5::Vector{Int32}
+        b5::Vector{Float64}
+        n6::Vector{Int32}
+        b6::Vector{Float64}
+        n7::Vector{Int32}
+        b7::Vector{Float64}
+        n8::Vector{Int32}
+        b8::Vector{Float64}
+    end
+    end # eval
 end
 
 """
@@ -2882,7 +2922,7 @@ for R in (
     :AreaInterchanges,
     :TwoTerminalDCLines30, :TwoTerminalDCLines33,
     :VSCDCLines,
-    :SwitchedShunts,
+    :SwitchedShunts30, :SwitchedShunts33,
     :ImpedanceCorrections,
     :ACConverters, :DCLinks, :DCBuses,
     :MultiSectionLineGroups30, :MultiSectionLineGroups33,
@@ -2891,10 +2931,7 @@ for R in (
     :Owners,
     :FACTSDevices30, :FACTSDevices33,
 )
-    @eval begin
-        !isabstracttype($R)
-        $R(sizehint::Integer=0) = $R(map(T -> sizehint!(T(), sizehint), fieldtypes($R))...)::$R
-    end
+    @eval $R(sizehint::Integer=0) = $R(map(T -> sizehint!(T(), sizehint), fieldtypes($R))...)::$R
 end
 
 ###
@@ -2952,6 +2989,7 @@ _summary(::Type{<:TwoTerminalDCLines}) = "TwoTerminalDCLines"
 _summary(::Type{<:MultiTerminalDCLines}) = "MultiTerminalDCLines"
 _summary(::Type{<:MultiSectionLineGroups}) = "MultiSectionLineGroups"
 _summary(::Type{<:FACTSDevices}) = "FACTSDevices"
+_summary(::Type{<:SwitchedShunts}) = "SwitchedShunts"
 
 function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
     if get(io, :compact, false)::Bool || isempty(x)

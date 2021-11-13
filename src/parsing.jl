@@ -76,7 +76,7 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     @debug 1 "Parsed VSCDCLines: nrows = $(length(vsc_dc)), pos = $pos"
 
     if !is_v33
-        switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
+        switched_shunts, pos = parse_records!(SwitchedShunts30(nbuses÷11), bytes, pos, len, OPTIONS)
         @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
     end
 
@@ -105,7 +105,7 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     @debug 1 "Parsed FACTSDevices: nrows = $(length(facts)), pos = $pos"
 
     if is_v33
-        switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
+        switched_shunts, pos = parse_records!(SwitchedShunts33(nbuses÷11), bytes, pos, len, OPTIONS)
         @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
     #     gne_devices, pos = parse_records!(GNEDevices(), bytes, pos, len, OPTIONS)
     #     @debug 1 "Parsed SwitchedShunts: nrows = $(length(gne_devices)), pos = $pos"
@@ -316,8 +316,9 @@ const N_SPECIAL = IdDict(
     # SwitchedShunts can have anywhere between 1 - 8 `N` and `B` values in the data itself,
     # if n2, b2, ..., n8, b8 are not present, we set them to zero.
     # i.e. the last 14 = 7(n) + 7(b) columns reqire special handling.
-    SwitchedShunts => 14,
-    # SwitchedShunts can have anywhere between 2 - 11 `T` and `F` values in the data itself,
+    SwitchedShunts30 => 14,
+    SwitchedShunts33 => 14,
+    # ImpedanceCorrections can have anywhere between 2 - 11 `T` and `F` values in the data itself,
     # if t3, f3, ..., t11, f11 are not present, we set them to zero.
     # i.e. the last 18 = 9(t) + 9(f) columns reqire special handling.
     ImpedanceCorrections => 18,
