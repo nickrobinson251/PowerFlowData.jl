@@ -56,6 +56,8 @@ AreaInterchanges
 ## Two-Terminal DC Lines
 ```@docs
 TwoTerminalDCLines
+TwoTerminalDCLines30
+TwoTerminalDCLines33
 ```
 
 ## VSC DC Lines

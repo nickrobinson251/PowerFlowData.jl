@@ -66,16 +66,17 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     interchanges, pos = parse_records!(AreaInterchanges(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed AreaInterchanges: nrows = $(length(interchanges)), pos = $pos"
 
-    two_terminal_dc, pos = parse_records!(TwoTerminalDCLines(), bytes, pos, len, OPTIONS)
+    TwoTerminalV = ifelse(is_v33, TwoTerminalDCLines33, TwoTerminalDCLines30)
+    two_terminal_dc, pos = parse_records!(TwoTerminalV(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed TwoTerminalDCLines: nrows = $(length(two_terminal_dc)), pos = $pos"
 
     vsc_dc, pos = parse_records!(VSCDCLines(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed VSCDCLines: nrows = $(length(vsc_dc)), pos = $pos"
 
-    # if !is_v33
-    switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
-    # end
+    if !is_v33
+        switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
+        @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
+    end
 
     impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed ImpedanceCorrections: nrows = $(length(impedance_corrections)), pos = $pos"
@@ -98,15 +99,14 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     facts, pos = parse_records!(FACTSDevices(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed FACTSDevices: nrows = $(length(facts)), pos = $pos"
 
-    # if is_v33
-    #     switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
-    #     @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
-
+    if is_v33
+        switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
+        @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
     #     gne_devices, pos = parse_records!(GNEDevices(), bytes, pos, len, OPTIONS)
     #     @debug 1 "Parsed SwitchedShunts: nrows = $(length(gne_devices)), pos = $pos"
     # else
     #     gne_devices = nothing
-    # end
+    end
 
     return Network(
         caseid,
