@@ -2445,7 +2445,7 @@ end
 Base.summary(io::IO, x::R) where {R <: Records} = print(io, "$R with $(length(x)) records")
 
 function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
-    if get(io, :compact, false)::Bool
+    if get(io, :compact, false)::Bool || isempty(x)
         Base.summary(io, x)
     else
         printstyled(io, R; bold=true)
