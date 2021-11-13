@@ -18,13 +18,17 @@ getbytes(source) = getbytes(read(source))
     parse_network(source) -> Network
 
 Read a PSS/E-format `.raw` Power Flow Data file and return a [`Network`](@ref) object.
+
+The version of the PSS/E format can be specified with the `v` keyword, like `v=33`,
+or else it will be automatically detected when parsing the file.
 """
-function parse_network(source)
+function parse_network(source; v::Union{Integer,Nothing}=nothing)
     @debug 1 "source = $source"
     bytes, pos, len = getbytes(source)
 
     caseid, pos = parse_idrow(CaseID, bytes, pos, len, OPTIONS)
-    is_v33 = isequal(caseid.rev, 33)
+    rev = something(v, caseid.rev)
+    is_v33 = isequal(rev, 33)
     @debug 1 "Parsed CaseID: rev = $(caseid.rev), pos = $pos"
 
     # Skip the 2 lines of comments
