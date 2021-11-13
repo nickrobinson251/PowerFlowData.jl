@@ -2445,7 +2445,7 @@ end
 Base.summary(io::IO, x::R) where {R <: Records} = print(io, "$R with $(length(x)) records")
 
 function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
-    if get(io, :compact, false)::Bool
+    if get(io, :compact, false)::Bool || isempty(x)
         Base.summary(io, x)
     else
         printstyled(io, R; bold=true)
@@ -2453,6 +2453,8 @@ function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
         print(io, " $(length(Tables.columnnames(x))) columns:\n")
         pretty_table(
             io, x;
+            alignment_anchor_fallback=:r,  # align right as best for integers
+            alignment_anchor_regex=Dict(0 => [r"\."]),  # align floating point numbers
             compact_printing=true,
             crop=:both,
             header=collect(Symbol, Tables.columnnames(x)),
