@@ -18,12 +18,20 @@ getbytes(source) = getbytes(read(source))
     parse_network(source) -> Network
 
 Read a PSS/E-format `.raw` Power Flow Data file and return a [`Network`](@ref) object.
+
+The version of the PSS/E format can be specified with the `v` keyword, like `v=33`,
+or else it will be automatically detected when parsing the file.
 """
-function parse_network(source)
+function parse_network(source; v::Union{Integer,Nothing}=nothing)
+    @debug 1 "source = $source, v = $v"
     bytes, pos, len = getbytes(source)
 
     caseid, pos = parse_idrow(CaseID, bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed CaseID: pos = $pos"
+    @debug 1 "Parsed CaseID: rev = $(caseid.rev), pos = $pos"
+    # when `v` not given, if `caseid.rev` missing we assume it is because data is v30 format
+    version = something(v, coalesce(caseid.rev, 30))
+    is_v33 = version == 33
+    @debug 1 "Set version = $version"
 
     # Skip the 2 lines of comments
     # TODO: confirm it is always only and exactly 2 lines of comments
@@ -31,18 +39,27 @@ function parse_network(source)
     pos = next_line(bytes, pos, len)
     @debug 1 "Parsed comments: pos = $pos"
 
-    buses, pos = parse_records!(Buses(len÷1000), bytes, pos, len, OPTIONS)
+    BusesV = ifelse(is_v33, Buses33, Buses30)
+    buses, pos = parse_records!(BusesV(len÷1000), bytes, pos, len, OPTIONS)
     nbuses = length(buses)
     @debug 1 "Parsed Buses: nrows = $nbuses, pos = $pos"
 
     loads, pos = parse_records!(Loads(nbuses), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Loads: nrows = $(length(loads)), pos = $pos"
 
+    if is_v33
+        fixed_shunts, pos = parse_records!(FixedShunts(), bytes, pos, len, OPTIONS)
+        @debug 1 "Parsed FixedShunts: nrows = $(length(fixed_shunts)), pos = $pos"
+    else
+        fixed_shunts = nothing
+    end
+
     gens, pos = parse_records!(Generators(nbuses÷10), bytes, pos, len, OPTIONS)
     ngens = length(gens)
     @debug 1 "Parsed Generators: nrows = $ngens, pos = $pos"
 
-    branches, pos = parse_records!(Branches(nbuses), bytes, pos, len, OPTIONS)
+    BranchesV = ifelse(is_v33, Branches33, Branches30)
+    branches, pos = parse_records!(BranchesV(nbuses), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Branches: nrows = $(length(branches)), pos = $pos"
 
     transformers, pos = parse_records!(Transformers(ngens*2), bytes, pos, len, OPTIONS)
@@ -51,22 +68,27 @@ function parse_network(source)
     interchanges, pos = parse_records!(AreaInterchanges(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed AreaInterchanges: nrows = $(length(interchanges)), pos = $pos"
 
-    two_terminal_dc, pos = parse_records!(TwoTerminalDCLines(), bytes, pos, len, OPTIONS)
+    TwoTerminalV = ifelse(is_v33, TwoTerminalDCLines33, TwoTerminalDCLines30)
+    two_terminal_dc, pos = parse_records!(TwoTerminalV(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed TwoTerminalDCLines: nrows = $(length(two_terminal_dc)), pos = $pos"
 
     vsc_dc, pos = parse_records!(VSCDCLines(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed VSCDCLines: nrows = $(length(vsc_dc)), pos = $pos"
 
-    switched_shunts, pos = parse_records!(SwitchedShunts(nbuses÷11), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
+    if !is_v33
+        switched_shunts, pos = parse_records!(SwitchedShunts30(nbuses÷11), bytes, pos, len, OPTIONS)
+        @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
+    end
 
     impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed ImpedanceCorrections: nrows = $(length(impedance_corrections)), pos = $pos"
 
-    multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines(), bytes, pos, len, OPTIONS)
+    I = is_v33 ? DCLineID33 : DCLineID30
+    multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines{I}(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed MultiTerminalDCLines: nrows = $(length(multi_terminal_dc)), pos = $pos"
 
-    multi_section_lines, pos = parse_records!(MultiSectionLineGroups(), bytes, pos, len, OPTIONS)
+    MultiSectionLineGroupsV = is_v33 ? MultiSectionLineGroups33 : MultiSectionLineGroups30
+    multi_section_lines, pos = parse_records!(MultiSectionLineGroupsV(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed MultiSectionLineGroups: nrows = $(length(multi_section_lines)), pos = $pos"
 
     zones, pos = parse_records!(Zones(), bytes, pos, len, OPTIONS)
@@ -78,13 +100,21 @@ function parse_network(source)
     owners, pos = parse_records!(Owners(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed Owners: nrows = $(length(owners)), pos = $pos"
 
-    facts, pos = parse_records!(FACTSDevices(), bytes, pos, len, OPTIONS)
+    FACTSDevicesV = ifelse(is_v33, FACTSDevices33, FACTSDevices30)
+    facts, pos = parse_records!(FACTSDevicesV(), bytes, pos, len, OPTIONS)
     @debug 1 "Parsed FACTSDevices: nrows = $(length(facts)), pos = $pos"
 
+    if is_v33
+        switched_shunts, pos = parse_records!(SwitchedShunts33(nbuses÷11), bytes, pos, len, OPTIONS)
+        @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
+    end
+
     return Network(
+        version,
         caseid,
         buses,
         loads,
+        fixed_shunts,
         gens,
         branches,
         transformers,
@@ -99,15 +129,17 @@ function parse_network(source)
         area_transfers,
         owners,
         facts,
+        # gne_devices,
     )
 end
 
 function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {R <: Records}
-    # Records terminated by specifying a bus number of zero.
+    # Records terminated by specifying a bus number of zero or `Q`.
     while !(
         eof(bytes, pos, len) ||
         peekbyte(bytes, pos) == UInt8('0') ||
-        peekbyte(bytes, pos) == UInt8(' ') && !eof(bytes, pos+1, len) && peekbyte(bytes, pos+1) == UInt8('0')
+        peekbyte(bytes, pos) == UInt8(' ') && !eof(bytes, pos+1, len) && peekbyte(bytes, pos+1) == UInt8('0') ||
+        peekbyte(bytes, pos) == UInt8('Q')
     )
         _, pos = parse_row!(rec, bytes, pos, len, options)
     end
@@ -185,17 +217,63 @@ function _parse_values(::Type{R}, a::Int, b::Int) where {R <: Records}
     return exprs
 end
 
+function _parse_maybemissing(R, col)
+    T = eltype(fieldtype(R, col))
+    return quote
+        if newline(code)
+            push!(getfield(rec, $col), missing)
+        else
+            (rec, pos, code) = parse_value!(rec, $col, $T, bytes, pos, len, options)
+        end
+    end
+end
+
+function _parse_maybemissing(R, col1, col2)
+    T1 = eltype(fieldtype(R, col1))
+    T2 = eltype(fieldtype(R, col2))
+    return quote
+        if newline(code)
+            push!(getfield(rec, $col1), missing)
+            push!(getfield(rec, $col2), missing)
+        else
+            (rec, pos, code) = parse_value!(rec, $col1, $T1, bytes, pos, len, options)
+            (rec, pos, code) = parse_value!(rec, $col2, $T2, bytes, pos, len, options)
+        end
+    end
+end
+
+function _parse_maybezero(R, col1, col2)
+    T1 = eltype(fieldtype(R, col1))
+    T2 = eltype(fieldtype(R, col2))
+    return quote
+        if newline(code)
+            push!(getfield(rec, $col1), zero($T1))
+            push!(getfield(rec, $col2), zero($T2))
+        else
+            (rec, pos, code) = parse_value!(rec, $col1, $T1, bytes, pos, len, options)
+            (rec, pos, code) = parse_value!(rec, $col2, $T2, bytes, pos, len, options)
+        end
+    end
+end
+
 function _parse_t2()
     block = Expr(:block)
     append!(block.args, _setmissing(EOL_COLS[1]+1+T2_COLS[2], EOL_COLS[2]))
-    append!(block.args, _parse_values(Transformers, EOL_COLS[2]+1, EOL_COLS[3]+T2_COLS[4]))
+    append!(block.args, _parse_values(Transformers, EOL_COLS[2]+1, EOL_COLS[3]-1))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[3]))
+    append!(block.args, _parse_values(Transformers, EOL_COLS[3]+1, EOL_COLS[3]+T2_COLS[4]))
     append!(block.args, _setmissing(EOL_COLS[3]+1+T2_COLS[4], EOL_COLS[5]))
     return block
 end
 
 function _parse_t3()
     block = Expr(:block)
-    append!(block.args, _parse_values(Transformers, EOL_COLS[1]+1+T2_COLS[2], EOL_COLS[5]))
+    append!(block.args, _parse_values(Transformers, EOL_COLS[1]+1+T2_COLS[2], EOL_COLS[3]-1))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[3]))
+    append!(block.args, _parse_values(Transformers, EOL_COLS[3]+1, EOL_COLS[4]-1))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[4]))
+    append!(block.args, _parse_values(Transformers, EOL_COLS[4]+1, EOL_COLS[5]-1))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[5]))
     return block
 end
 
@@ -210,7 +288,16 @@ end
 # This means T2 data with a comment after the last entry on line 2 will fool us.
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Transformers}
     block = Expr(:block)
-    append!(block.args, _parse_values(R, 1, EOL_COLS[1]+T2_COLS[2]))
+    # parse row 1
+    append!(block.args, _parse_values(R, 1, EOL_COLS[1]-7))
+    # parse possibly missing o2,f2,o3,f3,o4,f4
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[1]-6, EOL_COLS[1]-5))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[1]-4, EOL_COLS[1]-3))
+    push!(block.args, _parse_maybemissing(Transformers, EOL_COLS[1]-2, EOL_COLS[1]-1))
+    push!(block.args, _parse_maybemissing(R, EOL_COLS[1]))  # last col only in v33 data (not v30)
+    # parse first part of row 2
+    append!(block.args, _parse_values(R, EOL_COLS[1]+1, EOL_COLS[1]+T2_COLS[2]))
+    # now we can detect if it is two-winding or three-winding data
     push!(block.args, :(newline(code) ? $(_parse_t2()) : $(_parse_t3())))
     push!(block.args, :(return rec, pos))
     # @show block
@@ -225,31 +312,32 @@ const N_SPECIAL = IdDict(
     # SwitchedShunts can have anywhere between 1 - 8 `N` and `B` values in the data itself,
     # if n2, b2, ..., n8, b8 are not present, we set them to zero.
     # i.e. the last 14 = 7(n) + 7(b) columns reqire special handling.
-    SwitchedShunts => 14,
-    # SwitchedShunts can have anywhere between 2 - 11 `T` and `F` values in the data itself,
+    SwitchedShunts30 => 14,
+    SwitchedShunts33 => 14,
+    # ImpedanceCorrections can have anywhere between 2 - 11 `T` and `F` values in the data itself,
     # if t3, f3, ..., t11, f11 are not present, we set them to zero.
     # i.e. the last 18 = 9(t) + 9(f) columns reqire special handling.
     ImpedanceCorrections => 18,
+    # MultiSectionLineGroups can have between 1 - 9 `DUM_i` columns
+    MultiSectionLineGroups30 => 8,
+    MultiSectionLineGroups33 => 8,
+    # Loads have 2 extra columns in v33 compared to v30
+    Loads => 2,
+    # Generators have 1 - 4 `Oi`, `Fi` values, plus 2 extra columns in v33 compared to v30
+    Generators => 8, # 3*2 + 2
+    # Branches have 1 - 4 `Oi`, `Fi` values
+    Branches30 => 6, # 3*2
+    Branches33 => 6, # 3*2
 )
 
-@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections}}
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections, Branches}}
     block = Expr(:block)
     N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
     coln = N + 1
     colb = N + 2
     for _ in 1:(N_SPECIAL[R] ÷ 2)
-        Tn = eltype(fieldtype(R, coln))
-        Tb = eltype(fieldtype(R, colb))
-        push!(block.args, :(
-            if newline(code)  # TODO: improve on checking `newline` multiple times?
-                push!(getfield(rec, $coln), zero($Tn))
-                push!(getfield(rec, $colb), zero($Tb))
-            else
-                (rec, pos, code) = parse_value!(rec, $coln, $Tn, bytes, pos, len, options)
-                (rec, pos, code) = parse_value!(rec, $colb, $Tb, bytes, pos, len, options)
-            end
-        ))
+        push!(block.args, _parse_maybezero(R, coln, colb))
         coln += 2
         colb += 2
     end
@@ -259,22 +347,17 @@ const N_SPECIAL = IdDict(
 end
 
 ###
-### MultiSectionLineGroups
+### Loads, Generators, MultiSectionLineGroups
 ###
 
-# There can be between 1 - 9 DUM_i columns
-@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiSectionLineGroups}
+@generated function parse_row!(
+    rec::R, bytes, pos, len, options
+) where {R <: Union{Loads,Generators,MultiSectionLineGroups}}
     block = Expr(:block)
-    append!(block.args, _parse_values(R, 1, 4))  # I, J, ID, DUM1
-    for col in 5:fieldcount(R)
-        T = eltype(fieldtype(R, col))
-        push!(block.args, :(
-            if newline(code)  # TODO: improve on checking `newline` multiple times?
-                push!(getfield(rec, $col), missing)
-            else
-                (rec, pos, code) = parse_value!(rec, $col, $T, bytes, pos, len, options)
-            end
-        ))
+    N = fieldcount(R) - N_SPECIAL[R]
+    append!(block.args, _parse_values(R, 1, N))
+    for col in (N + 1):fieldcount(R)
+        push!(block.args, _parse_maybemissing(R, col))
     end
     push!(block.args, :(return rec, pos))
     # @show block
@@ -285,8 +368,8 @@ end
 ### MultiTerminalDCLines
 ###
 
-function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiTerminalDCLines}
-    line_id, pos = parse_idrow(DCLineID, bytes, pos, len, options)
+function parse_row!(rec::R, bytes, pos, len, options) where {I, R <: MultiTerminalDCLines{I}}
+    line_id, pos = parse_idrow(I, bytes, pos, len, options)
 
     nconv = line_id.nconv
     converters = ACConverters(nconv)
@@ -310,24 +393,32 @@ function parse_row!(rec::R, bytes, pos, len, options) where {R <: MultiTerminalD
     return rec, pos
 end
 
+###
+### IDRow
+###
+
 @generated function parse_idrow(::Type{R}, bytes, pos, len, options) where {R <: IDRow}
     block = Expr(:block)
     nfields = fieldcount(R)
+    push!(block.args, :(kwargs = NamedTuple()))
     for i in 1:nfields
-        T = fieldtype(R, i)
-        val_i = Symbol(:val, i)
+        T = nonmissingtype(fieldtype(R, i))
+        val_i = fieldname(R, i)
         push!(block.args, quote
             res = xparse($T, bytes, pos, len, options)
             $val_i = res.val
             pos += res.tlen
+            code = res.code
+            kwargs = merge(kwargs, (; $val_i))
+            (invaliddelimiter(code) || newline(code)) && @goto done
         end)
     end
     push!(block.args, quote
-        if !newline(res.code)
+        @label done
+        if !newline(code)
             pos = next_line(bytes, pos, len)
         end
-        args = Tuple{$(fieldtypes(R)...)}([$((Symbol(:val, i) for i in 1:nfields)...)])
-        return R(args...), pos
+        return R(; kwargs...), pos
     end)
     # @show block
     return block

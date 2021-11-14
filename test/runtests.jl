@@ -6,9 +6,9 @@ using Tables
 using Test
 
 @testset "PowerFlowData.jl" begin
-
     @testset "Infers" begin
         for T in subtypes(PowerFlowData.Records)
+            isabstracttype(T) && continue
             @inferred T()
             @inferred T(1)
         end
@@ -48,10 +48,10 @@ using Test
             @test Tables.istable(T)
         end
 
-        caseid = CaseID(0, 100.0)
+        caseid = CaseID(ic=0, sbase=100.0)
         @test caseid[1] == caseid[:ic]
         @test caseid[2] == caseid[:sbase]
-        @test NamedTuple(caseid) == (ic=0, sbase=100.0)
+        @test NamedTuple(caseid) isa NamedTuple
     end
 
     @testset "show" begin
@@ -59,15 +59,15 @@ using Test
         net = parse_network("testfiles/synthetic_data_v29.raw")
 
         # CaseID should have a parseable `repr`; `AbstractRows` don't get this for free.
-        @test repr(net.caseid) == "CaseID(ic = 0, sbase = 100.0)"
-        @test eval(Meta.parse(repr(net.caseid))) == CaseID(0, 100.0)
+        @test startswith(repr(net.caseid), "CaseID(ic = 0, sbase = 100.0, ")
+        @test isequal(eval(Meta.parse(repr(net.caseid))), CaseID(ic=0, sbase=100.0))
 
         mime = MIME("text/plain")
         context = :compact => true
         @test repr(mime, net; context) == "Network"
         @test repr(mime, net) == strip(
             """
-            Network with 17 data categories:
+            Network (v30) with 17 data categories:
              $(sprint(show, mime, net.caseid))
              $(sprint(show, mime, net.buses; context))
              $(sprint(show, mime, net.loads; context))
@@ -87,7 +87,7 @@ using Test
              $(sprint(show, mime, net.facts; context))
             """
         )
-        @test repr(mime, net.caseid) == "CaseID: (ic = 0, sbase = 100.0)"
+        @test startswith(repr(mime, net.caseid), "CaseID: (ic = 0, sbase = 100.0, ")
 
         @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 2 records"
         @test startswith(repr(mime, net.buses), "Buses with 2 records, 11 columns:\n──")
@@ -123,23 +123,25 @@ using Test
         @test buses.name[2] == "D2JK  "
 
         loads = net1.loads
-        @test loads.i == [111, 113]
-        @test loads.owner == [1, 2]
+        @test loads.i == [111, 113]  # first col
+        @test loads.owner == [1, 2]  # last col
+        @test isequal(loads.intrpt, [missing, missing])
 
         gens = net1.generators
         @test gens.i == [111, -112, 113]
-        @test gens.fi == [1.0, 1.0, 1.0]
+        @test gens.f1 == [1.0, 1.0, 1.0]  # last col guaranteed to exist
+        @test isequal(gens.wpf, [missing, missing, missing])
         @test gens.id[1] == "ST"
 
         branches = net1.branches
         @test branches.i == [111, 111, 112]
         @test branches.j == [112, -113, 113]  # negative numbers should be allowed
-        @test branches.fi == [1.0, 1.0, 1.0]
+        @test branches.f1 == [1.0, 1.0, 1.0]
         @test branches.ckt[1] == "3 "
 
         transformers = net1.transformers
         @test transformers.i == [112, 113]                     #  1st entry of 1st row
-        @test transformers.fi == [1.0, 1.0]                    # last entry of 1st row
+        @test transformers.f1 == [1.0, 1.0]                    # last entry of 1st row
         @test transformers.r1_2 == [0.032470, 0.039570]        #  1st entry of 2nd row
         @test transformers.sbase1_2 == [200.0, 200.0]          # last entry of 2nd row (T2)
         @test isequal(transformers.anstar, [missing, 1.01893]) # last entry of 2nd row (T3)
@@ -234,24 +236,26 @@ using Test
         @test buses.name[2] == "PRPR C D    "
 
         loads = net2.loads
-        @test loads.i == [1, 222222]
-        @test loads.owner == [1, 7]
+        @test loads.i == [1, 222222]  # first col
+        @test loads.owner == [1, 7]   # last col
+        @test isequal(loads.intrpt, [missing, missing])
 
         gens = net2.generators
         @test gens.i == [104]    # first col
-        @test gens.fi == [1.0]   # last col
+        @test gens.f1 == [1.0]   # last col guaranteed to exist
+        @test isequal(gens.wpf, [missing])
         @test gens.id[1] == "1 " # string col
 
         branches = net2.branches
         @test branches.i == [1, 2, 222222]
         @test branches.j == [-543210, 9, 333333]  # negative numbers should be allowed
-        @test branches.fi == [1.0, 1.0, 1.0]
+        @test branches.f1 == [1.0, 1.0, 1.0]
         @test branches.ckt[2] == "6 "
 
         transformers = net2.transformers
         @test length(transformers.i) == 3
         @test transformers.i == [42, 4774, 222222]            #  1st entry of 1st row
-        @test transformers.fi == [1.0, 1.0, 1.0]              # last entry of 1st row
+        @test transformers.f1 == [1.0, 1.0, 1.0]              # last entry of 1st row
         @test transformers.r1_2 == [0.0025, 0.0, 0.0005]      #  1st entry of 2nd row
         @test transformers.sbase1_2 == [100.0, 100.0, 100.0]  # last entry of 2nd row
         @test transformers.windv1 == [1.0, 1.0462, 1.0]       #  1st entry of 3rd row
@@ -263,9 +267,10 @@ using Test
         @test transformers.ckt == ["K1", "90", "B1"]          # string col
 
         # v29 testfile has only 2-winding data, so should return only 2-winding columns
-        @test length(Tables.columnnames(transformers)) == 35
-        @test size(DataFrame(transformers)) == (3, 35)
-        @test size(transformers) == (3, 35)
+        ncols_expected = 43
+        @test length(Tables.columnnames(transformers)) == ncols_expected
+        @test size(DataFrame(transformers)) == (3, ncols_expected)
+        @test size(transformers) == (3, ncols_expected)
         @test length(transformers) == 3
 
         interchanges = net2.interchanges
@@ -333,6 +338,120 @@ using Test
 
         facts = net2.facts
         @test isempty(facts)
+    end
+
+    @testset "v33 file" begin
+        net33 = parse_network("testfiles/synthetic_data_v33.RAW")
+        @test net33 isa Network
+        @test net33.version == 33
+
+        caseid = net33.caseid
+        @test caseid.ic == 0
+        @test caseid.sbase == 100.0
+        @test caseid.rev == 33
+
+        buses = net33.buses
+        @test buses.i == [1, 500]  # first col
+        @test buses.name == ["WINNSBORO 0 ", "MC CORMICK 0"]  # string col
+        @test buses.evlo == [0.9, 0.9]  # last col
+
+        loads = net33.loads
+        @test loads.i == [2, 500]  # first col
+        @test loads.scale == [1, 1]  # last col
+        @test isequal(loads.intrpt, [missing, missing])  # possible last col
+
+        fixed_shunts = net33.fixed_shunts
+        @test fixed_shunts.i == [320, 784]  # first col
+        @test fixed_shunts.bl == [48.274, 19.939]  # last col
+
+        gens = net33.generators
+        @test gens.i == [9, 498]  # first col
+        @test gens.wpf == [1.0, 1.0]  # last col
+
+        branches = net33.branches
+        @test branches.i == [2, 500]  # first col
+        @test branches.met == [1, 1]  # only in v33
+        @test branches.f4 == [1.0, 1.0]  # last col
+
+        # v33 has extra columns on rows 1, 3, 4, 5.
+        transformers = net33.transformers
+        @test transformers.i == [8, 190, 498]                              #  1st entry of 1st row
+        @test all(transformers.vecgrp .== "            ")                  # last entry of 1st row
+        @test transformers.r1_2 == [3.55062E-4, 7.65222E-4, 4.00610E-3]    #  1st entry of 2nd row
+        @test transformers.sbase1_2 == [100.0, 100.0, 100.0]               # last entry of 2nd row (T2)
+        @test isequal(transformers.anstar, [missing, -65.843144, missing]) # last entry of 2nd row (T3)
+        @test transformers.windv1 == [1.0, 1.0, 1.0]                       #  1st entry of 3rd row
+        @test transformers.cnxa1 == [0.0, 0.0, 0.0]                        # last entry of 3rd row
+        @test transformers.windv2 == [1.0, 1.0, 1.0]                       #  1st entry of 4th row
+        @test transformers.nomv2 == [345.0, 115.0, 138.0]                  # last entry of 4th row (T2)
+        @test isequal(transformers.cnxa2, [missing, 0.0, missing])         # last entry of 4th row (T3)
+        @test isequal(transformers.windv3, [missing, 1.0, missing])        #  1st entry of 5th row
+        @test isequal(transformers.cnxa3, [missing, 0.0, missing])         # last entry of 5th row
+        @test transformers.ckt[1] == "1 "                                  # string col
+
+        # v33 testfile has both 2-winding and 3-winding data, so should return all columns
+        @test length(Tables.columnnames(transformers)) == fieldcount(Transformers)
+        @test size(DataFrame(transformers)) == (3, fieldcount(Transformers))
+        @test size(transformers) == (3, fieldcount(Transformers))
+        @test length(transformers) == 3
+
+        interchanges = net33.interchanges
+        @test interchanges.i == [1]
+        @test interchanges.arname == ["SouthCarolin"]
+
+        two_terminal_dc = net33.two_terminal_dc
+        @test two_terminal_dc.name == ["DC Line 1   ", "DC Line 1   "]  # first col
+        @test two_terminal_dc.cccacc == [0.0, 0.0]         # last entry of 1st row
+        @test two_terminal_dc.ipr == [2060653, 3008030]    #  1st entry of 2nd row
+        @test two_terminal_dc.xcapr == [0.0, 0.0]          # last entry of 2nd row
+        @test two_terminal_dc.ipi == [66353, 61477]        #  1st entry of 3nd row
+        @test two_terminal_dc.xcapi == [0.0, 0.0]          # last entry of 3rd row
+
+        vsc_dc = net33.vsc_dc
+        @test isempty(vsc_dc)
+
+        impedance_corrections = net33.impedance_corrections
+        @test impedance_corrections.i == [1, 2, 3]          # first col
+        @test impedance_corrections.f6 == [1.03, 0.0, 1.41] # col present on some rows not others
+        @test impedance_corrections.f11 == [0.0, 0.0, 0.0]  # last col (missing, default to zero)
+
+        multi_terminal_dc = net33.multi_terminal_dc
+        @test length(multi_terminal_dc) == 1
+
+        mt_dc = only(multi_terminal_dc.lines)
+        line_id = mt_dc.line_id
+        @test line_id.name == "DC Line 1   " # first val
+        @test line_id.vconvn == 0            # last val
+
+        multi_section_lines = net33.multi_section_lines
+        @test multi_section_lines.i == [1]                 # first col
+        @test multi_section_lines.id == ["&1"]             # string col
+        @test multi_section_lines.met == [1]               # only in v33 data
+        @test isequal(multi_section_lines.dum1, [3])       # `dum1` is last col present
+        @test isequal(multi_section_lines.dum9, [missing]) # last col; not present; default to missing
+
+        zones = net33.zones
+        @test zones.i == [1, 2]
+        @test zones.zoname == ["Upstate ", "Midlands"]
+
+        area_transfers = net33.area_transfers
+        @test isempty(area_transfers)
+
+        owners = net33.owners
+        @test owners.i == [1]
+        @test owners.owname == ["1"]
+
+        facts = net33.facts
+        @test isempty(facts)
+
+        switched_shunts = net33.switched_shunts
+        @test switched_shunts.i == [27, 491]      # first col
+        @test switched_shunts.adjm == [0, 0]      #   3rd col (only in v33)
+        @test switched_shunts.stat == [1, 1]      #   4th col (only in v33)
+        @test switched_shunts.n1 == [1, 1]        #  `n1` col always present
+        @test switched_shunts.b1 == [80.0, 50.0]  #  `b1` col always present
+        @test switched_shunts.n8 == [0, 0]         # `n8` col not present; default to zero
+        @test switched_shunts.b8 == [0.0, 0.0]     # `b8` col not present; default to zero
     end
 
     @testset "issues" begin

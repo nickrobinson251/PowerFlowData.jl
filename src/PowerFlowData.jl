@@ -9,10 +9,16 @@ using Tables
 
 export parse_network
 export Network
-export CaseID, Buses, Loads, Generators, Branches, Transformers, AreaInterchanges
-export TwoTerminalDCLines, VSCDCLines, SwitchedShunts, ImpedanceCorrections
-export MultiTerminalDCLines, MultiTerminalDCLine, DCLineID, ACConverters, DCBuses, DCLinks
-export MultiSectionLineGroups, Zones, InterAreaTransfers, Owners, FACTSDevices
+export CaseID, Buses, Buses30, Buses33, Branches, Branches30, Branches33
+export FixedShunts, Loads, Generators, Transformers, AreaInterchanges
+export SwitchedShunts, SwitchedShunts30, SwitchedShunts33
+export TwoTerminalDCLines, TwoTerminalDCLines30, TwoTerminalDCLines33
+export VSCDCLines, ImpedanceCorrections
+export MultiTerminalDCLines, MultiTerminalDCLine, DCLineID, DCLineID30, DCLineID33
+export ACConverters, DCBuses, DCLinks
+export MultiSectionLineGroups, MultiSectionLineGroups30, MultiSectionLineGroups33
+export Zones, InterAreaTransfers, Owners
+export FACTSDevices, FACTSDevices30, FACTSDevices33
 
 include("debug.jl")
 include("types.jl")

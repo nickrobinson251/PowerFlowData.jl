@@ -17,11 +17,18 @@ CaseID
 ## Buses
 ```@docs
 Buses
+Buses30
+Buses33
 ```
 
 ## Loads
 ```@docs
 Loads
+```
+
+## Fixed Shunts
+```@docs
+FixedShunts
 ```
 
 ## Generators
@@ -32,6 +39,8 @@ Generators
 ## Branches
 ```@docs
 Branches
+Branches30
+Branches33
 ```
 
 ## Transformers
@@ -47,6 +56,8 @@ AreaInterchanges
 ## Two-Terminal DC Lines
 ```@docs
 TwoTerminalDCLines
+TwoTerminalDCLines30
+TwoTerminalDCLines33
 ```
 
 ## VSC DC Lines
@@ -57,6 +68,8 @@ VSCDCLines
 ## Switched Shunts
 ```@docs
 SwitchedShunts
+SwitchedShunts30
+SwitchedShunts33
 ```
 
 ## Transformer Impedance Corrections
@@ -69,6 +82,8 @@ ImpedanceCorrections
 MultiTerminalDCLines
 MultiTerminalDCLine
 DCLineID
+DCLineID30
+DCLineID33
 ACConverters
 DCBuses
 DCLinks
@@ -77,6 +92,8 @@ DCLinks
 ## Multi-Section Line Groups
 ```@docs
 MultiSectionLineGroups
+MultiSectionLineGroups30
+MultiSectionLineGroups33
 ```
 
 ## Zones
@@ -97,4 +114,6 @@ Owners
 ## FACTS Devices
 ```@docs
 FACTSDevices
+FACTSDevices30
+FACTSDevices33
 ```
