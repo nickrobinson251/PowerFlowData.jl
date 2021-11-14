@@ -16,6 +16,7 @@ makedocs(;
         "Home" => "index.md",
         "API" => "api.md",
         "Alternatives" => "alternatives.md",
+        "Implementation" => "implementation.md",
     ],
     strict=true,
     checkdocs=:exports,
