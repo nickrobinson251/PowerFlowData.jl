@@ -2794,7 +2794,7 @@ struct Network
     "Transformer records."
     transformers::Transformers
     "Area Interchange records."
-    interchanges::AreaInterchanges
+    area_interchanges::AreaInterchanges
     "Two-terminal DC Line records."
     two_terminal_dc::TwoTerminalDCLines
     "Voltage Source Converter DC Line records."

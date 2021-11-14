@@ -74,7 +74,7 @@ using Test
              $(sprint(show, mime, net.generators; context))
              $(sprint(show, mime, net.branches; context))
              $(sprint(show, mime, net.transformers; context))
-             $(sprint(show, mime, net.interchanges; context))
+             $(sprint(show, mime, net.area_interchanges; context))
              $(sprint(show, mime, net.two_terminal_dc; context))
              $(sprint(show, mime, net.vsc_dc; context))
              $(sprint(show, mime, net.switched_shunts; context))
@@ -160,12 +160,12 @@ using Test
         @test size(transformers) == (2, fieldcount(Transformers))
         @test length(transformers) == 2
 
-        interchanges = net1.interchanges
-        @test interchanges.i == [113]
-        @test interchanges.isw == [456]
-        @test interchanges.pdes == [2121.7211]
-        @test interchanges.ptol == [6.0]
-        @test interchanges.arname == ["ABC     "]
+        area_interchanges = net1.area_interchanges
+        @test area_interchanges.i == [113]
+        @test area_interchanges.isw == [456]
+        @test area_interchanges.pdes == [2121.7211]
+        @test area_interchanges.ptol == [6.0]
+        @test area_interchanges.arname == ["ABC     "]
 
         two_terminal_dc = net1.two_terminal_dc
         @test two_terminal_dc.i == [11]           #  1st entry of 1st row
@@ -273,12 +273,12 @@ using Test
         @test size(transformers) == (3, ncols_expected)
         @test length(transformers) == 3
 
-        interchanges = net2.interchanges
-        @test interchanges.i == [615, 762]
-        @test interchanges.isw == [615001, 1234]
-        @test interchanges.pdes == [32.677, -224.384]
-        @test interchanges.ptol == [5.0, 5.0]
-        @test interchanges.arname == ["RE          ", "OTP         "]
+        area_interchanges = net2.area_interchanges
+        @test area_interchanges.i == [615, 762]
+        @test area_interchanges.isw == [615001, 1234]
+        @test area_interchanges.pdes == [32.677, -224.384]
+        @test area_interchanges.ptol == [5.0, 5.0]
+        @test area_interchanges.arname == ["RE          ", "OTP         "]
 
         two_terminal_dc = net2.two_terminal_dc
         @test isempty(two_terminal_dc)
@@ -395,9 +395,9 @@ using Test
         @test size(transformers) == (3, fieldcount(Transformers))
         @test length(transformers) == 3
 
-        interchanges = net33.interchanges
-        @test interchanges.i == [1]
-        @test interchanges.arname == ["SouthCarolin"]
+        area_interchanges = net33.area_interchanges
+        @test area_interchanges.i == [1]
+        @test area_interchanges.arname == ["SouthCarolin"]
 
         two_terminal_dc = net33.two_terminal_dc
         @test two_terminal_dc.name == ["DC Line 1   ", "DC Line 1   "]  # first col
