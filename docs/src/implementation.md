@@ -1,6 +1,6 @@
 # Implementation details
 
-This page has rough notes about the how the internals of PowerFlowData.jl.
+This page has rough notes about the internals of PowerFlowData.jl.
 
 We use [Parsers.jl](https://github.com/JuliaData/Parsers.jl/) to parse bytes into Julia types.
 Broadly speaking, we use `Parsers.Options` to configure the parsing based on the `.raw` format (e.g. `,` characters are delimiters), and then `Parsers.xparse` to actually parse the bytes between delimiters into the expected Julia types.
