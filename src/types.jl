@@ -279,7 +279,7 @@ connected admittance, switched shunts, loads, line charging or transformer magne
 all of which are entered in other data categories.
 
 !!! compat "Not present in v30 files"
-    v30 files do not `FixedShunts`; refer to [`Buses`](@ref) and [`SwitchedShunts`](@ref).
+    v30 files do not have `FixedShunts`; refer to [`Buses`](@ref) and [`SwitchedShunts`](@ref).
 """
 struct FixedShunts <: Records
     "Bus number, or extended bus name enclosed in single quotes. No default."
