@@ -34,81 +34,36 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     @debug 1 "Set version = $version"
 
     # Skip the 2 lines of comments
-    # TODO: confirm it is always only and exactly 2 lines of comments
     pos = next_line(bytes, pos, len)
     pos = next_line(bytes, pos, len)
     @debug 1 "Parsed comments: pos = $pos"
-
-    BusesV = ifelse(is_v33, Buses33, Buses30)
-    buses, pos = parse_records!(BusesV(len÷1000), bytes, pos, len, OPTIONS)
-    nbuses = length(buses)
-    @debug 1 "Parsed Buses: nrows = $nbuses, pos = $pos"
-
-    loads, pos = parse_records!(Loads(nbuses), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed Loads: nrows = $(length(loads)), pos = $pos"
-
-    if is_v33
-        fixed_shunts, pos = parse_records!(FixedShunts(), bytes, pos, len, OPTIONS)
-        @debug 1 "Parsed FixedShunts: nrows = $(length(fixed_shunts)), pos = $pos"
+    return if is_v33
+        parse_network33(source, version, caseid, bytes, pos, len, OPTIONS)
     else
-        fixed_shunts = nothing
+        parse_network30(source, version, caseid, bytes, pos, len, OPTIONS)
     end
+end
 
-    gens, pos = parse_records!(Generators(nbuses÷10), bytes, pos, len, OPTIONS)
+function parse_network33(source, version, caseid, bytes, pos, len, options)
+    buses, pos = parse_records!(Buses33(len÷1000), bytes, pos, len, options)
+    nbuses = length(buses)
+    loads, pos = parse_records!(Loads(nbuses), bytes, pos, len, options)
+    fixed_shunts, pos = parse_records!(FixedShunts(), bytes, pos, len, options)
+    gens, pos = parse_records!(Generators(nbuses÷10), bytes, pos, len, options)
     ngens = length(gens)
-    @debug 1 "Parsed Generators: nrows = $ngens, pos = $pos"
-
-    BranchesV = ifelse(is_v33, Branches33, Branches30)
-    branches, pos = parse_records!(BranchesV(nbuses), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed Branches: nrows = $(length(branches)), pos = $pos"
-
-    transformers, pos = parse_records!(Transformers(ngens*2), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed Transformers: nrows = $(length(transformers)), pos = $pos"
-
-    interchanges, pos = parse_records!(AreaInterchanges(), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed AreaInterchanges: nrows = $(length(interchanges)), pos = $pos"
-
-    TwoTerminalV = ifelse(is_v33, TwoTerminalDCLines33, TwoTerminalDCLines30)
-    two_terminal_dc, pos = parse_records!(TwoTerminalV(), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed TwoTerminalDCLines: nrows = $(length(two_terminal_dc)), pos = $pos"
-
-    vsc_dc, pos = parse_records!(VSCDCLines(), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed VSCDCLines: nrows = $(length(vsc_dc)), pos = $pos"
-
-    if !is_v33
-        switched_shunts, pos = parse_records!(SwitchedShunts30(nbuses÷11), bytes, pos, len, OPTIONS)
-        @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
-    end
-
-    impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed ImpedanceCorrections: nrows = $(length(impedance_corrections)), pos = $pos"
-
-    I = is_v33 ? DCLineID33 : DCLineID30
-    multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines{I}(), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed MultiTerminalDCLines: nrows = $(length(multi_terminal_dc)), pos = $pos"
-
-    MultiSectionLineGroupsV = is_v33 ? MultiSectionLineGroups33 : MultiSectionLineGroups30
-    multi_section_lines, pos = parse_records!(MultiSectionLineGroupsV(), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed MultiSectionLineGroups: nrows = $(length(multi_section_lines)), pos = $pos"
-
-    zones, pos = parse_records!(Zones(), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed Zones: nrows = $(length(zones)), pos = $pos"
-
-    area_transfers, pos = parse_records!(InterAreaTransfers(), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed InterAreaTransfers: nrows = $(length(area_transfers)), pos = $pos"
-
-    owners, pos = parse_records!(Owners(), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed Owners: nrows = $(length(owners)), pos = $pos"
-
-    FACTSDevicesV = ifelse(is_v33, FACTSDevices33, FACTSDevices30)
-    facts, pos = parse_records!(FACTSDevicesV(), bytes, pos, len, OPTIONS)
-    @debug 1 "Parsed FACTSDevices: nrows = $(length(facts)), pos = $pos"
-
-    if is_v33
-        switched_shunts, pos = parse_records!(SwitchedShunts33(nbuses÷11), bytes, pos, len, OPTIONS)
-        @debug 1 "Parsed SwitchedShunts: nrows = $(length(switched_shunts)), pos = $pos"
-    end
-
+    branches, pos = parse_records!(Branches33(nbuses), bytes, pos, len, options)
+    transformers, pos = parse_records!(Transformers(ngens*2), bytes, pos, len, options)
+    interchanges, pos = parse_records!(AreaInterchanges(), bytes, pos, len, options)
+    two_terminal_dc, pos = parse_records!(TwoTerminalDCLines33(), bytes, pos, len, options)
+    vsc_dc, pos = parse_records!(VSCDCLines(), bytes, pos, len, options)
+    impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, options)
+    multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines{DCLineID33}(), bytes, pos, len, options)
+    multi_section_lines, pos = parse_records!(MultiSectionLineGroups33(), bytes, pos, len, options)
+    zones, pos = parse_records!(Zones(), bytes, pos, len, options)
+    area_transfers, pos = parse_records!(InterAreaTransfers(), bytes, pos, len, options)
+    owners, pos = parse_records!(Owners(), bytes, pos, len, options)
+    facts, pos = parse_records!(FACTSDevices33(), bytes, pos, len, options)
+    switched_shunts, pos = parse_records!(SwitchedShunts33(nbuses÷11), bytes, pos, len, options)
     return Network(
         version,
         caseid,
@@ -129,7 +84,49 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
         area_transfers,
         owners,
         facts,
-        # gne_devices,
+    )
+end
+
+function parse_network30(source, version, caseid, bytes, pos, len, options)
+    buses, pos = parse_records!(Buses30(len÷1000), bytes, pos, len, options)
+    nbuses = length(buses)
+    loads, pos = parse_records!(Loads(nbuses), bytes, pos, len, options)
+    fixed_shunts = nothing
+    gens, pos = parse_records!(Generators(nbuses÷10), bytes, pos, len, options)
+    ngens = length(gens)
+    branches, pos = parse_records!(Branches30(nbuses), bytes, pos, len, options)
+    transformers, pos = parse_records!(Transformers(ngens*2), bytes, pos, len, options)
+    interchanges, pos = parse_records!(AreaInterchanges(), bytes, pos, len, options)
+    two_terminal_dc, pos = parse_records!(TwoTerminalDCLines30(), bytes, pos, len, options)
+    vsc_dc, pos = parse_records!(VSCDCLines(), bytes, pos, len, options)
+    switched_shunts, pos = parse_records!(SwitchedShunts30(nbuses÷11), bytes, pos, len, options)
+    impedance_corrections, pos = parse_records!(ImpedanceCorrections(), bytes, pos, len, options)
+    multi_terminal_dc, pos = parse_records!(MultiTerminalDCLines{DCLineID30}(), bytes, pos, len, options)
+    multi_section_lines, pos = parse_records!(MultiSectionLineGroups30(), bytes, pos, len, options)
+    zones, pos = parse_records!(Zones(), bytes, pos, len, options)
+    area_transfers, pos = parse_records!(InterAreaTransfers(), bytes, pos, len, options)
+    owners, pos = parse_records!(Owners(), bytes, pos, len, options)
+    facts, pos = parse_records!(FACTSDevices30(), bytes, pos, len, options)
+    return Network(
+        version,
+        caseid,
+        buses,
+        loads,
+        fixed_shunts,
+        gens,
+        branches,
+        transformers,
+        interchanges,
+        two_terminal_dc,
+        vsc_dc,
+        switched_shunts,
+        impedance_corrections,
+        multi_terminal_dc,
+        multi_section_lines,
+        zones,
+        area_transfers,
+        owners,
+        facts,
     )
 end
 
@@ -144,6 +141,7 @@ function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {
         _, pos = parse_row!(rec, bytes, pos, len, options)
     end
     pos = next_line(bytes, pos, len)  # Move past a "0 bus" line.
+    @debug 1 "Parsed $R: nrows = $(length(rec)), pos = $pos"
     return rec, pos
 end
 
