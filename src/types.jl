@@ -2358,8 +2358,6 @@ $TYPEDFIELDS
 struct MultiTerminalDCLines{I<:DCLineID} <: Records
     lines::Vector{MultiTerminalDCLine}
 
-    # Avoid ambiguity with generic 1-arg Records constructor
-    MultiTerminalDCLines{I}(lines::AbstractVector) where I = new{I}(lines)
     MultiTerminalDCLines{I}(sizehint::Integer=0) where I = new{I}(sizehint!(MultiTerminalDCLine[], sizehint))
 end
 MultiTerminalDCLines(args...) = MultiTerminalDCLines{DCLineID30}(args...)
