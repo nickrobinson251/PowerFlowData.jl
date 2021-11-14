@@ -14,14 +14,11 @@ To read a `.raw` file, use `parse_network`:
 using PowerFlowData
 parse_network("file.raw")
 ```
-This will return a `Network` object, which contains the data parsed into dedicated structures matching the PSS/E-format specification.
+This will return a `Network` object, which contains the data parsed into dedicated structures matching the
+[PSS/E](https://en.wikipedia.org/wiki/Power_system_simulator_for_engineering)-format specification.
 
 **[Documentation](https://nickrobinson251.github.io/PowerFlowData.jl/dev)**
 
-### Stability
-
-Currently this is a work-in-progress package being developed for fun… 'cos you gotta have hobbies.
-It is not stable.
-It is not yet very robust.
-The format specification is based on old [PSS/E](https://en.wikipedia.org/wiki/Power_system_simulator_for_engineering) user-manuals and example files I could find online.
-There are likely more performance improvements to be made too.
+The format specification is based on old PSS/E user-manuals and example files I could find online.
+Currently v30 and v33 of the format are supported.
+Please open an issue if you run into any problems or missing features.
