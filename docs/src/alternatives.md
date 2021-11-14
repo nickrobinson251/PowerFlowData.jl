@@ -15,8 +15,8 @@ Whereas PowerFlowData.jl (this package) can parse all data categories from both 
 
 Importantly, these alternatives also take a completely different approach to this package.
 These other parsers read the `.raw` files as a `String` (e.g. using `readlines`), then operate on string data, and parse strings into other Julia types as necessary.
-PowerFlowData.jl reads the `.raw` files as a bytes buffer (`Vector{UInt8}`), then parses the bytes directly into Julia types.
-This is much faster and more memory efficient.
+PowerFlowData.jl reads the `.raw` files as a bytes buffer (`Vector{UInt8}`) then parses the bytes directly into Julia types,
+which is much faster and more memory efficient.
 
 This package was originally developed as a fun exercise, but should correctly implement the full data format specification.
 Please feel encouraged to give this package a try, and open issues if you encounter any
