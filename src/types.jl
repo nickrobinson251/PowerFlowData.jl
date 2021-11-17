@@ -2911,12 +2911,14 @@ function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
         printstyled(io, R_str; bold=true)
         print(io, " with $(length(x)) records,")
         print(io, " $(length(Tables.columnnames(x))) columns:\n")
+        (vsize, hsize) = displaysize(io)
         pretty_table(
             io, x;
             alignment_anchor_fallback=:r,  # align right as best for integers
             alignment_anchor_regex=Dict(0 => [r"\."]),  # align floating point numbers
             compact_printing=true,
             crop=:both,
+            display_size=(max(1, vsize-3), hsize), # save some vertical space for summary
             header=collect(Symbol, Tables.columnnames(x)),
             newline_at_end=false,
             vcrop_mode=:middle,  # show first and last rows
