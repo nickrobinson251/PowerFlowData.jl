@@ -24,4 +24,6 @@ include("debug.jl")
 include("types.jl")
 include("parsing.jl")
 
+include("matpower.jl")
+
 end  # module
