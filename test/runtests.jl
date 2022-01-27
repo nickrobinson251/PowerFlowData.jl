@@ -120,7 +120,7 @@ using Test
         @test buses.owner == [1, 2, 2]
 
         # Test string column as expected
-        @test buses.name[2] == "D2JK  "
+        @test buses.name[2] == "D2JK"
 
         loads = net1.loads
         @test loads.i == [111, 113]  # first col
@@ -137,7 +137,7 @@ using Test
         @test branches.i == [111, 111, 112]
         @test branches.j == [112, -113, 113]  # negative numbers should be allowed
         @test branches.f1 == [1.0, 1.0, 1.0]
-        @test branches.ckt[1] == "3 "
+        @test branches.ckt[1] == "3"
 
         transformers = net1.transformers
         @test transformers.i == [112, 113]                     #  1st entry of 1st row
@@ -165,7 +165,7 @@ using Test
         @test area_interchanges.isw == [456]
         @test area_interchanges.pdes == [2121.7211]
         @test area_interchanges.ptol == [6.0]
-        @test area_interchanges.arname == ["ABC     "]
+        @test area_interchanges.arname == ["ABC"]
 
         two_terminal_dc = net1.two_terminal_dc
         @test two_terminal_dc.i == [11]           #  1st entry of 1st row
@@ -176,7 +176,7 @@ using Test
         @test two_terminal_dc.xcapi == [2.0]      # last entry of 3rd row
 
         vsc_dc = net1.vsc_dc
-        @test vsc_dc.name == ["line 1 "]   #  1st entry of 1st row
+        @test vsc_dc.name == ["line 1"]   #  1st entry of 1st row
         @test vsc_dc.f4 == [1.0]           # last entry of 1st row
         @test vsc_dc.ibus1 == [1117]       #  1st entry of 2nd row
         @test vsc_dc.rmpct1 == [100.0]     # last entry of 2nd row
@@ -205,7 +205,7 @@ using Test
 
         zones = net1.zones
         @test zones.i == [117, 127, 227]
-        @test zones.zoname == ["ABC ", "CDEF", " CDEG "]
+        @test zones.zoname == ["ABC", "CDEF", "CDEG"]
 
         area_transfers = net1.area_transfers
         @test area_transfers.arfrom == [1, 1]
@@ -213,7 +213,7 @@ using Test
 
         owners = net1.owners
         @test owners.i == [1, 2]
-        @test owners.owname == ["      ABC   ", "      CDE  "]
+        @test owners.owname == ["ABC", "CDE"]
 
         facts = net1.facts
         @test facts.n == [1]
@@ -233,7 +233,7 @@ using Test
         @test buses.owner == [1, 7]
 
         # Test string column as expected
-        @test buses.name[2] == "PRPR C D    "
+        @test buses.name[2] == "PRPR C D"
 
         loads = net2.loads
         @test loads.i == [1, 222222]  # first col
@@ -244,13 +244,13 @@ using Test
         @test gens.i == [104]    # first col
         @test gens.f1 == [1.0]   # last col guaranteed to exist
         @test isequal(gens.wpf, [missing])
-        @test gens.id[1] == "1 " # string col
+        @test gens.id[1] == "1" # string col
 
         branches = net2.branches
         @test branches.i == [1, 2, 222222]
         @test branches.j == [-543210, 9, 333333]  # negative numbers should be allowed
         @test branches.f1 == [1.0, 1.0, 1.0]
-        @test branches.ckt[2] == "6 "
+        @test branches.ckt[2] == "6"
 
         transformers = net2.transformers
         @test length(transformers.i) == 3
@@ -278,7 +278,7 @@ using Test
         @test area_interchanges.isw == [615001, 1234]
         @test area_interchanges.pdes == [32.677, -224.384]
         @test area_interchanges.ptol == [5.0, 5.0]
-        @test area_interchanges.arname == ["RE          ", "OTP         "]
+        @test area_interchanges.arname == ["RE", "OTP"]
 
         two_terminal_dc = net2.two_terminal_dc
         @test isempty(two_terminal_dc)
@@ -327,14 +327,14 @@ using Test
 
         zones = net2.zones
         @test zones.i == [1, 9]
-        @test zones.zoname == ["ABL         ", "EFGN        "]
+        @test zones.zoname == ["ABL", "EFGN"]
 
         area_transfers = net2.area_transfers
         @test isempty(area_transfers)
 
         owners = net2.owners
         @test owners.i == [1, 2]
-        @test owners.owname == ["      EAI   ", "      OUYK  "]
+        @test owners.owname == ["EAI", "OUYK"]
 
         facts = net2.facts
         @test isempty(facts)
@@ -352,7 +352,7 @@ using Test
 
         buses = net33.buses
         @test buses.i == [1, 500]  # first col
-        @test buses.name == ["WINNSBORO 0 ", "MC CORMICK 0"]  # string col
+        @test buses.name == ["WINNSBORO 0", "MC CORMICK 0"]  # string col
         @test buses.evlo == [0.9, 0.9]  # last col
 
         loads = net33.loads
@@ -376,7 +376,7 @@ using Test
         # v33 has extra columns on rows 1, 3, 4, 5.
         transformers = net33.transformers
         @test transformers.i == [8, 190, 498]                              #  1st entry of 1st row
-        @test all(transformers.vecgrp .== "            ")                  # last entry of 1st row
+        @test all(transformers.vecgrp .== "")                  # last entry of 1st row
         @test transformers.r1_2 == [3.55062E-4, 7.65222E-4, 4.00610E-3]    #  1st entry of 2nd row
         @test transformers.sbase1_2 == [100.0, 100.0, 100.0]               # last entry of 2nd row (T2)
         @test isequal(transformers.anstar, [missing, -65.843144, missing]) # last entry of 2nd row (T3)
@@ -387,7 +387,7 @@ using Test
         @test isequal(transformers.cnxa2, [missing, 0.0, missing])         # last entry of 4th row (T3)
         @test isequal(transformers.windv3, [missing, 1.0, missing])        #  1st entry of 5th row
         @test isequal(transformers.cnxa3, [missing, 0.0, missing])         # last entry of 5th row
-        @test transformers.ckt[1] == "1 "                                  # string col
+        @test transformers.ckt[1] == "1"                                  # string col
 
         # v33 testfile has both 2-winding and 3-winding data, so should return all columns
         @test length(Tables.columnnames(transformers)) == fieldcount(Transformers)
@@ -400,7 +400,7 @@ using Test
         @test area_interchanges.arname == ["SouthCarolin"]
 
         two_terminal_dc = net33.two_terminal_dc
-        @test two_terminal_dc.name == ["DC Line 1   ", "DC Line 1   "]  # first col
+        @test two_terminal_dc.name == ["DC Line 1", "DC Line 1"]  # first col
         @test two_terminal_dc.cccacc == [0.0, 0.0]         # last entry of 1st row
         @test two_terminal_dc.ipr == [2060653, 3008030]    #  1st entry of 2nd row
         @test two_terminal_dc.xcapr == [0.0, 0.0]          # last entry of 2nd row
@@ -420,7 +420,7 @@ using Test
 
         mt_dc = only(multi_terminal_dc.lines)
         line_id = mt_dc.line_id
-        @test line_id.name == "DC Line 1   " # first val
+        @test line_id.name == "DC Line 1" # first val
         @test line_id.vconvn == 0            # last val
 
         multi_section_lines = net33.multi_section_lines
@@ -432,7 +432,7 @@ using Test
 
         zones = net33.zones
         @test zones.i == [1, 2]
-        @test zones.zoname == ["Upstate ", "Midlands"]
+        @test zones.zoname == ["Upstate", "Midlands"]
 
         area_transfers = net33.area_transfers
         @test isempty(area_transfers)
