@@ -396,28 +396,38 @@ end
 ### IDRow
 ###
 
+function parse_value!(args, ::Type{T}, bytes, pos, len, options) where {T}
+    res = xparse(T, bytes, pos, len, options)
+    code = res.code
+    val = ifelse(valueok(code), res.val, missing)
+    push!(args, val)
+    pos += res.tlen
+    return pos, code
+end
+
 @generated function parse_idrow(::Type{R}, bytes, pos, len, options) where {R <: IDRow}
     block = Expr(:block)
     nfields = fieldcount(R)
-    push!(block.args, :(kwargs = NamedTuple()))
+    push!(block.args, quote
+        args = Any[]
+        code = Parsers.OK
+    end)
     for i in 1:nfields
         T = nonmissingtype(fieldtype(R, i))
-        val_i = fieldname(R, i)
         push!(block.args, quote
-            res = xparse($T, bytes, pos, len, options)
-            $val_i = res.val
-            pos += res.tlen
-            code = res.code
-            kwargs = merge(kwargs, (; $val_i))
-            (invaliddelimiter(code) || newline(code)) && @goto done
+            if invalid(code) || newline(code)
+                push!(args, missing)
+            else
+                pos, code = parse_value!(args, $T, bytes, pos, len, options)
+                @debug 1 "$pos:  $(Parsers.codes(code))"
+            end
         end)
     end
     push!(block.args, quote
-        @label done
         if !newline(code)
             pos = next_line(bytes, pos, len)
         end
-        return R(; kwargs...), pos
+        return R(args...), pos
     end)
     # @show block
     return block
