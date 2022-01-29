@@ -408,18 +408,18 @@ end
 @generated function parse_idrow(::Type{R}, bytes, pos, len, options) where {R <: IDRow}
     block = Expr(:block)
     nfields = fieldcount(R)
+    T = nonmissingtype(fieldtype(R, 1))
     push!(block.args, quote
         args = Any[]
-        code = Parsers.OK
+        (pos, code) = parse_value!(args, $T, bytes, pos, len, options)
     end)
-    for i in 1:nfields
+    for i in 2:nfields
         T = nonmissingtype(fieldtype(R, i))
         push!(block.args, quote
             if invalid(code) || newline(code)
                 push!(args, missing)
             else
-                pos, code = parse_value!(args, $T, bytes, pos, len, options)
-                @debug 1 "$pos:  $(Parsers.codes(code))"
+                (pos, code) = parse_value!(args, $T, bytes, pos, len, options)
             end
         end)
     end
