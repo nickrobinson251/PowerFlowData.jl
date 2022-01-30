@@ -263,6 +263,13 @@ struct Loads <: Records
     `intrpt`=0 by default.
     """
     intrpt::Vector{Union{Bool,Missing}}
+    # v34:
+    # DGENP
+    # dgenp::Vector{Float64,Missing}
+    # DGENQ
+    # dgenq::Vector{Float64,Missing}
+    # DGENF
+    # dgenf::Vector{Float64,Missing}
 end
 
 """
@@ -450,6 +457,9 @@ struct Generators <: Records
     `wpf` = 1.0 by default.
     """
     wpf::Vector{Union{Float64,Missing}}
+    # v34
+    # NREG
+    # nreg::Vector{Union{Float64,Missing}}
 end
 
 """
