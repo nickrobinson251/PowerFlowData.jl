@@ -2846,6 +2846,15 @@ for R in (
     @eval $R(sizehint::Integer=0) = $R(map(T -> sizehint!(T(), sizehint), fieldtypes($R))...)::$R
 end
 
+function Base.isempty(net::T) where {T <: Network}
+    for i in 1:fieldcount(T)
+        if typeof(getfield(net, i)) <: Records && !isempty(getfield(net, i))
+            return false
+        end
+    end
+    return true
+end
+
 ###
 ### show
 ###

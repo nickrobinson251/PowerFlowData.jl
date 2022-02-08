@@ -459,4 +459,31 @@ using Test
         @test length(net.buses) == 2
         @test length(net.loads) == 1
     end
+
+    @testset "empty network" begin
+
+        empty_net = Network(
+            30,
+            CaseID(),
+            Buses30(),
+            Loads(),
+            FixedShunts(),
+            Generators(),
+            Branches30(),
+            Transformers(),
+            AreaInterchanges(),
+            TwoTerminalDCLines30(),
+            VSCDCLines(),
+            SwitchedShunts30(),
+            ImpedanceCorrections(),
+            MultiTerminalDCLines(),
+            MultiSectionLineGroups30(),
+            Zones(),
+            InterAreaTransfers(),
+            Owners(),
+            FACTSDevices30(),
+        )
+
+        @test isempty(empty_net)
+    end
 end
