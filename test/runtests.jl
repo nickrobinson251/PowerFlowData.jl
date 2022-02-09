@@ -484,6 +484,9 @@ using Test
             FACTSDevices30(),
         )
 
+        full_net = parse_network("testfiles/synthetic_data_v30.raw")
+
         @test isempty(empty_net)
+        @test !isempty(full_net)
     end
 end
