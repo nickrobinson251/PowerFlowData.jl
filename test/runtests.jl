@@ -467,7 +467,7 @@ using Test
             CaseID(),
             Buses30(),
             Loads(),
-            FixedShunts(),
+            nothing,
             Generators(),
             Branches30(),
             Transformers(),
