@@ -2848,7 +2848,7 @@ end
 
 function Base.isempty(net::T) where {T <: Network}
     for i in 1:fieldcount(T)
-        if typeof(getfield(net, i)) <: Records && !isempty(getfield(net, i))
+        if fieldtype(T, i) <: Records && !isempty(getfield(net, i))
             return false
         end
     end
