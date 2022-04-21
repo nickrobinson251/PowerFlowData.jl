@@ -8,7 +8,7 @@ const OPTIONS = Parsers.Options(
     openquotechar='\'',
     closequotechar='\'',
     delim=',',
-    stripwhitespace=true,
+    stripquoted=true,
 )
 
 getbytes(source::Vector{UInt8}) = source, 1, length(source)
