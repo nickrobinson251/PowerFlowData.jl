@@ -1,7 +1,7 @@
 name = "PowerFlowData"
 uuid = "dd99e9e3-7471-40fc-b48d-a10501125371"
 authors = "Nick Robinson <npr251@gmail.com> and contributors"
-version = "1.3.0"
+version = "1.3.1"
 
 [deps]
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
@@ -14,7 +14,7 @@ Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 DataFrames = "1"
 DocStringExtensions = "0.8.5"
 InlineStrings = "1.1.2"
-Parsers = "2.2.1"
+Parsers = "2.3"
 PrettyTables = "1"
 Tables = "1"
 julia = "1"
