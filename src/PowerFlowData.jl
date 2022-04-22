@@ -2,7 +2,7 @@ module PowerFlowData
 
 using DocStringExtensions
 using InlineStrings: InlineString1, InlineString3, InlineString15
-using Parsers: Parsers, xparse
+using Parsers: Parsers, xparse, checkdelim!
 using Parsers: codes, eof, invalid, invaliddelimiter, newline, valueok, peekbyte
 using PrettyTables: pretty_table
 using Tables

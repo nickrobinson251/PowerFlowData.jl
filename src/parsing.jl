@@ -7,8 +7,10 @@ const OPTIONS = Parsers.Options(
     quoted=true,
     openquotechar='\'',
     closequotechar='\'',
-    delim=',',
+    delim=' ',
+    ignorerepeated=true,
     stripquoted=true,
+    wh1=0x00,
 )
 
 getbytes(source::Vector{UInt8}) = source, 1, length(source)
@@ -27,6 +29,7 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     @debug 1 "source = $source, v = $v"
     bytes, pos, len = getbytes(source)
 
+    pos = checkdelim!(bytes, pos, len, OPTIONS)
     caseid, pos = parse_idrow(CaseID, bytes, pos, len, OPTIONS)
     @debug 1 "Parsed CaseID: rev = $(caseid.rev), pos = $pos"
     # when `v` not given, if `caseid.rev` missing we assume it is because data is v30 format
@@ -131,12 +134,18 @@ function parse_network30(source, version, caseid, bytes, pos, len, options)
     )
 end
 
+# identify `0` or `'0'`
+@inline function _iszero(bytes, pos, len)
+    peekbyte(bytes, pos) == UInt8('0') ||
+    peekbyte(bytes, pos) == UInt8('\'') && !eof(bytes, pos+1, len) && peekbyte(bytes, pos+1) == UInt8('0')
+end
+
 function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {R <: Records}
     # Records terminated by specifying a bus number of zero or `Q`.
     while !(
         eof(bytes, pos, len) ||
-        peekbyte(bytes, pos) == UInt8('0') ||
-        peekbyte(bytes, pos) == UInt8(' ') && !eof(bytes, pos+1, len) && peekbyte(bytes, pos+1) == UInt8('0') ||
+        _iszero(bytes, pos, len) ||
+        peekbyte(bytes, pos) == UInt8(' ') && !eof(bytes, pos+1, len) && _iszero(bytes, pos+1, len) ||
         peekbyte(bytes, pos) == UInt8('Q')
     )
         _, pos = parse_row!(rec, bytes, pos, len, options)
@@ -185,6 +194,9 @@ end
 
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Records}
     block = Expr(:block)
+    push!(block.args, quote
+        pos = checkdelim!(bytes, pos, len, options)
+    end)
     for col in 1:fieldcount(R)
         T = eltype(fieldtype(R, col))
         push!(block.args, quote
@@ -287,6 +299,9 @@ end
 # This means T2 data with a comment after the last entry on line 2 will fool us.
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Transformers}
     block = Expr(:block)
+    push!(block.args, quote
+        pos = checkdelim!(bytes, pos, len, options)
+    end)
     # parse row 1
     append!(block.args, _parse_values(R, 1, EOL_COLS[1]-7))
     # parse possibly missing o2,f2,o3,f3,o4,f4
@@ -331,6 +346,9 @@ const N_SPECIAL = IdDict(
 
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections, Branches}}
     block = Expr(:block)
+    push!(block.args, quote
+        pos = checkdelim!(bytes, pos, len, options)
+    end)
     N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
     coln = N + 1
@@ -353,6 +371,9 @@ end
     rec::R, bytes, pos, len, options
 ) where {R <: Union{Loads,Generators,MultiSectionLineGroups}}
     block = Expr(:block)
+    push!(block.args, quote
+        pos = checkdelim!(bytes, pos, len, options)
+    end)
     N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
     for col in (N + 1):fieldcount(R)
@@ -368,6 +389,7 @@ end
 ###
 
 function parse_row!(rec::R, bytes, pos, len, options) where {I, R <: MultiTerminalDCLines{I}}
+    pos = checkdelim!(bytes, pos, len, options)
     line_id, pos = parse_idrow(I, bytes, pos, len, options)
 
     nconv = line_id.nconv
