@@ -2,20 +2,46 @@
 ### parsing
 ###
 
-const OPTIONS = Parsers.Options(
+const OPTIONS_COMMA = Parsers.Options(
     sentinel=missing,
     quoted=true,
     openquotechar='\'',
     closequotechar='\'',
+    stripquoted=true,
+    delim=',',
+)
+const OPTIONS_SPACE = Parsers.Options(
+    sentinel=missing,
+    quoted=true,
+    openquotechar='\'',
+    closequotechar='\'',
+    stripquoted=true,
     delim=' ',
     ignorerepeated=true,
-    stripquoted=true,
     wh1=0x00,
 )
+
+@inline getoptions(delim::Char) = ifelse(delim === ',', OPTIONS_COMMA, OPTIONS_SPACE)
 
 getbytes(source::Vector{UInt8}) = source, 1, length(source)
 getbytes(source::IOBuffer) = source.data, source.ptr, source.size
 getbytes(source) = getbytes(read(source))
+
+# `delim` can either be comma `','` or space `' '`
+# The documented PSSE format specifies comma... but some files somehow use spaces instead.
+# We look for commas in the first line and if found assume comma is the delim,
+# but if none found we assume space is the delim.
+function detectdelim(bytes, pos, len)
+    eof(bytes, pos, len) && return ',' # doesn't matter which we return
+    b = peekbyte(bytes, pos)
+    while b !== UInt8('\n') && b !== UInt8('\r')
+        b == UInt8(',') && return ','
+        pos += 1
+        eof(bytes, pos, len) && return ','
+        b = peekbyte(bytes, pos)
+    end
+    return ' '
+end
 
 """
     parse_network(source) -> Network
@@ -24,13 +50,17 @@ Read a PSS/E-format `.raw` Power Flow Data file and return a [`Network`](@ref) o
 
 The version of the PSS/E format can be specified with the `v` keyword, like `v=33`,
 or else it will be automatically detected when parsing the file.
+
+The delimiter can be specified with the `delim` keyword, like `delim=' '`,
+or else it will be automatically detected when parsing the file.
 """
-function parse_network(source; v::Union{Integer,Nothing}=nothing)
+function parse_network(source; v::Union{Integer,Nothing}=nothing, delim::Union{Nothing,Char}=nothing)
     @debug 1 "source = $source, v = $v"
     bytes, pos, len = getbytes(source)
-
-    pos = checkdelim!(bytes, pos, len, OPTIONS)
-    caseid, pos = parse_idrow(CaseID, bytes, pos, len, OPTIONS)
+    d = delim === nothing ? detectdelim(bytes, pos, len) : delim
+    options = getoptions(d)
+    pos = checkdelim!(bytes, pos, len, options)
+    caseid, pos = parse_idrow(CaseID, bytes, pos, len, options)
     @debug 1 "Parsed CaseID: rev = $(caseid.rev), pos = $pos"
     # when `v` not given, if `caseid.rev` missing we assume it is because data is v30 format
     version = something(v, coalesce(caseid.rev, 30))
@@ -42,9 +72,9 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     pos = next_line(bytes, pos, len)
     @debug 1 "Parsed comments: pos = $pos"
     return if is_v33
-        parse_network33(source, version, caseid, bytes, pos, len, OPTIONS)
+        parse_network33(source, version, caseid, bytes, pos, len, options)
     else
-        parse_network30(source, version, caseid, bytes, pos, len, OPTIONS)
+        parse_network30(source, version, caseid, bytes, pos, len, options)
     end
 end
 
