@@ -4,3 +4,6 @@
 .DS_Store
 /Manifest.toml
 /docs/build/
+
+/*.raw
+/*.RAW
