@@ -2,6 +2,9 @@
 ### parsing
 ###
 
+# We currently support comma-delimited and space-delimited files,
+# so just always create these two options, rather than having to
+# create `Options` anew each time we parse a file.
 const OPTIONS_COMMA = Parsers.Options(
     sentinel=missing,
     quoted=true,
