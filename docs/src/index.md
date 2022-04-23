@@ -26,7 +26,7 @@ like:
 ```julia
 parse_network("file.raw"; delim=' ')
 ```
-If not specified, the delimiter format will automatically be determined when parsing.
+If not specified, the delimiter will automatically be detected when parsing.
 Comma delimited files `delim=','` and space delimited files `delim=' '` are currently supported.
 
 ## Example
