@@ -62,7 +62,9 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing, delim::Union{N
     bytes, pos, len = getbytes(source)
     d = delim === nothing ? detectdelim(bytes, pos, len) : delim
     options = getoptions(d)
-    pos = checkdelim!(bytes, pos, len, options)
+    if options.ignorerepeated  # skip any delimiters at the very start of the file
+        pos = checkdelim!(bytes, pos, len, options)
+    end
     caseid, pos = parse_idrow(CaseID, bytes, pos, len, options)
     @debug 1 "Parsed CaseID: rev = $(caseid.rev), pos = $pos"
     # when `v` not given, if `caseid.rev` missing we assume it is because data is v30 format
@@ -71,8 +73,8 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing, delim::Union{N
     @debug 1 "Set version = $version"
 
     # Skip the 2 lines of comments
-    pos = next_line(bytes, pos, len)
-    pos = next_line(bytes, pos, len)
+    pos = next_line(bytes, pos, len, options)
+    pos = next_line(bytes, pos, len, options)
     @debug 1 "Parsed comments: pos = $pos"
     return if is_v33
         parse_network33(source, version, caseid, bytes, pos, len, options)
@@ -183,14 +185,14 @@ function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {
     )
         _, pos = parse_row!(rec, bytes, pos, len, options)
     end
-    pos = next_line(bytes, pos, len)  # Move past a "0 bus" line.
+    pos = next_line(bytes, pos, len, options)  # Move past a "0 bus" line.
     @debug 1 "Parsed $R: nrows = $(length(rec)), pos = $pos"
     return rec, pos
 end
 
 # Taken from `Parsers.checkcmtemptylines`
 # TODO: move to Parsers.jl?
-function next_line(bytes, pos, len)
+function next_line(bytes, pos, len, options)
     eof(bytes, pos, len) && return pos
     b = peekbyte(bytes, pos)
     while b !== UInt8('\n') && b !== UInt8('\r')
@@ -203,6 +205,11 @@ function next_line(bytes, pos, len)
     # if line ends `\r\n`, then we're at `\n`and need to move forward again.
     if b === UInt8('\r') && !eof(bytes, pos, len) && peekbyte(bytes, pos) === UInt8('\n')
         pos += 1
+    end
+    if options.ignorerepeated
+        # find the start of the values in the next line; if we're ignoring repeated
+        # delimiters, then we ignore any that start a row.
+        pos = checkdelim!(bytes, pos, len, options)
     end
     return pos
 end
@@ -227,9 +234,6 @@ end
 
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Records}
     block = Expr(:block)
-    push!(block.args, quote
-        pos = checkdelim!(bytes, pos, len, options)
-    end)
     for col in 1:fieldcount(R)
         T = eltype(fieldtype(R, col))
         push!(block.args, quote
@@ -332,9 +336,6 @@ end
 # This means T2 data with a comment after the last entry on line 2 will fool us.
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Transformers}
     block = Expr(:block)
-    push!(block.args, quote
-        pos = checkdelim!(bytes, pos, len, options)
-    end)
     # parse row 1
     append!(block.args, _parse_values(R, 1, EOL_COLS[1]-7))
     # parse possibly missing o2,f2,o3,f3,o4,f4
@@ -379,9 +380,6 @@ const N_SPECIAL = IdDict(
 
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections, Branches}}
     block = Expr(:block)
-    push!(block.args, quote
-        pos = checkdelim!(bytes, pos, len, options)
-    end)
     N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
     coln = N + 1
@@ -404,9 +402,6 @@ end
     rec::R, bytes, pos, len, options
 ) where {R <: Union{Loads,Generators,MultiSectionLineGroups}}
     block = Expr(:block)
-    push!(block.args, quote
-        pos = checkdelim!(bytes, pos, len, options)
-    end)
     N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
     for col in (N + 1):fieldcount(R)
@@ -422,7 +417,6 @@ end
 ###
 
 function parse_row!(rec::R, bytes, pos, len, options) where {I, R <: MultiTerminalDCLines{I}}
-    pos = checkdelim!(bytes, pos, len, options)
     line_id, pos = parse_idrow(I, bytes, pos, len, options)
 
     nconv = line_id.nconv
@@ -480,7 +474,7 @@ end
     end
     push!(block.args, quote
         if !newline(code)
-            pos = next_line(bytes, pos, len)
+            pos = next_line(bytes, pos, len, options)
         end
         return R(args...), pos
     end)
