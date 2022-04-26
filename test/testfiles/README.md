@@ -16,6 +16,9 @@ For example, the branches data might references buses which are not present in t
 These files were created to demonstrate issues that the parser should now be able to handle.
 
 1. `spacezero.raw`: v30 format data with a space before the `0` bus number that indicates the end of the records.
+1. `spacedelim.raw`: v30 format data with space as the delimiter.
+1. `quotedzero.raw`: v30 format data with a quoted zero `'0'` bus number indicating the end of one of the records.
+   Based on the `spacedelim.raw` file.
 
 ---
 _This is a work of fiction. Any resemblance to actual datas, living or dead, is purely coincidental._

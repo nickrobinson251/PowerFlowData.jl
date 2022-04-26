@@ -21,6 +21,14 @@ parse_network("file.raw"; v=33)
 Alternatively, the version of the data format will automatically be determined when parsing.
 Versions 30 and 33 of the format are currently supported.
 
+You can specify which character separates values in the file using the `delim` keyword,
+like:
+```julia
+parse_network("file.raw"; delim=' ')
+```
+If not specified, the delimiter will automatically be detected when parsing.
+Comma delimited files `delim=','` and space delimited files `delim=' '` are currently supported.
+
 ## Example
 
 Usually your data will be in a file, and you'd read it with `parse_network("file.raw")`,

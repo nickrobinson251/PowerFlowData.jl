@@ -2,18 +2,49 @@
 ### parsing
 ###
 
-const OPTIONS = Parsers.Options(
+# We currently support comma-delimited and space-delimited files,
+# so just always create these two options, rather than having to
+# create `Options` anew each time we parse a file.
+const OPTIONS_COMMA = Parsers.Options(
     sentinel=missing,
     quoted=true,
     openquotechar='\'',
     closequotechar='\'',
-    delim=',',
     stripquoted=true,
+    delim=',',
 )
+const OPTIONS_SPACE = Parsers.Options(
+    sentinel=missing,
+    quoted=true,
+    openquotechar='\'',
+    closequotechar='\'',
+    stripquoted=true,
+    delim=' ',
+    ignorerepeated=true,
+    wh1=0x00,
+)
+
+@inline getoptions(delim::Char) = ifelse(delim === ',', OPTIONS_COMMA, OPTIONS_SPACE)
 
 getbytes(source::Vector{UInt8}) = source, 1, length(source)
 getbytes(source::IOBuffer) = source.data, source.ptr, source.size
 getbytes(source) = getbytes(read(source))
+
+# `delim` can either be comma `','` or space `' '`
+# The documented PSSE format specifies comma... but some files somehow use spaces instead.
+# We look for commas in the first line and if found assume comma is the delim,
+# but if none found we assume space is the delim.
+function detectdelim(bytes, pos, len)
+    eof(bytes, pos, len) && return ',' # doesn't matter which we return
+    b = peekbyte(bytes, pos)
+    while b !== UInt8('\n') && b !== UInt8('\r')
+        b == UInt8(',') && return ','
+        pos += 1
+        eof(bytes, pos, len) && return ','
+        b = peekbyte(bytes, pos)
+    end
+    return ' '
+end
 
 """
     parse_network(source) -> Network
@@ -22,12 +53,19 @@ Read a PSS/E-format `.raw` Power Flow Data file and return a [`Network`](@ref) o
 
 The version of the PSS/E format can be specified with the `v` keyword, like `v=33`,
 or else it will be automatically detected when parsing the file.
+
+The delimiter can be specified with the `delim` keyword, like `delim=' '`,
+or else it will be automatically detected when parsing the file.
 """
-function parse_network(source; v::Union{Integer,Nothing}=nothing)
+function parse_network(source; v::Union{Integer,Nothing}=nothing, delim::Union{Nothing,Char}=nothing)
     @debug 1 "source = $source, v = $v"
     bytes, pos, len = getbytes(source)
-
-    caseid, pos = parse_idrow(CaseID, bytes, pos, len, OPTIONS)
+    d = delim === nothing ? detectdelim(bytes, pos, len) : delim
+    options = getoptions(d)
+    if options.ignorerepeated  # skip any delimiters at the very start of the file
+        pos = checkdelim!(bytes, pos, len, options)
+    end
+    caseid, pos = parse_idrow(CaseID, bytes, pos, len, options)
     @debug 1 "Parsed CaseID: rev = $(caseid.rev), pos = $pos"
     # when `v` not given, if `caseid.rev` missing we assume it is because data is v30 format
     version = something(v, coalesce(caseid.rev, 30))
@@ -35,13 +73,13 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing)
     @debug 1 "Set version = $version"
 
     # Skip the 2 lines of comments
-    pos = next_line(bytes, pos, len)
-    pos = next_line(bytes, pos, len)
+    pos = next_line(bytes, pos, len, options)
+    pos = next_line(bytes, pos, len, options)
     @debug 1 "Parsed comments: pos = $pos"
     return if is_v33
-        parse_network33(source, version, caseid, bytes, pos, len, OPTIONS)
+        parse_network33(source, version, caseid, bytes, pos, len, options)
     else
-        parse_network30(source, version, caseid, bytes, pos, len, OPTIONS)
+        parse_network30(source, version, caseid, bytes, pos, len, options)
     end
 end
 
@@ -131,24 +169,30 @@ function parse_network30(source, version, caseid, bytes, pos, len, options)
     )
 end
 
+# identify `0` or `'0'`
+@inline function _iszero(bytes, pos, len)
+    peekbyte(bytes, pos) == UInt8('0') ||
+    peekbyte(bytes, pos) == UInt8('\'') && !eof(bytes, pos+1, len) && peekbyte(bytes, pos+1) == UInt8('0')
+end
+
 function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {R <: Records}
     # Records terminated by specifying a bus number of zero or `Q`.
     while !(
         eof(bytes, pos, len) ||
-        peekbyte(bytes, pos) == UInt8('0') ||
-        peekbyte(bytes, pos) == UInt8(' ') && !eof(bytes, pos+1, len) && peekbyte(bytes, pos+1) == UInt8('0') ||
+        _iszero(bytes, pos, len) ||
+        peekbyte(bytes, pos) == UInt8(' ') && !eof(bytes, pos+1, len) && _iszero(bytes, pos+1, len) ||
         peekbyte(bytes, pos) == UInt8('Q')
     )
         _, pos = parse_row!(rec, bytes, pos, len, options)
     end
-    pos = next_line(bytes, pos, len)  # Move past a "0 bus" line.
+    pos = next_line(bytes, pos, len, options)  # Move past a "0 bus" line.
     @debug 1 "Parsed $R: nrows = $(length(rec)), pos = $pos"
     return rec, pos
 end
 
 # Taken from `Parsers.checkcmtemptylines`
 # TODO: move to Parsers.jl?
-function next_line(bytes, pos, len)
+function next_line(bytes, pos, len, options)
     eof(bytes, pos, len) && return pos
     b = peekbyte(bytes, pos)
     while b !== UInt8('\n') && b !== UInt8('\r')
@@ -161,6 +205,11 @@ function next_line(bytes, pos, len)
     # if line ends `\r\n`, then we're at `\n`and need to move forward again.
     if b === UInt8('\r') && !eof(bytes, pos, len) && peekbyte(bytes, pos) === UInt8('\n')
         pos += 1
+    end
+    if options.ignorerepeated
+        # find the start of the values in the next line; if we're ignoring repeated
+        # delimiters, then we ignore any that start a row.
+        pos = checkdelim!(bytes, pos, len, options)
     end
     return pos
 end
@@ -425,7 +474,7 @@ end
     end
     push!(block.args, quote
         if !newline(code)
-            pos = next_line(bytes, pos, len)
+            pos = next_line(bytes, pos, len, options)
         end
         return R(args...), pos
     end)

@@ -454,10 +454,58 @@ using Test
         @test switched_shunts.b8 == [0.0, 0.0]     # `b8` col not present; default to zero
     end
 
+    @testset "delim=' '" begin
+        net_space = parse_network("testfiles/spacedelim.raw")
+
+        caseid = net_space.caseid
+        @test caseid == CaseID(ic=0, sbase=100.0)
+
+        buses = net_space.buses
+        @test length(buses) == 2
+        # https://github.com/JuliaData/Parsers.jl/issues/115
+        @test_broken buses.name = ["ABC", "ABCDEFGH"]
+
+        loads = net_space.loads
+        @test loads.i == [7, 8478]
+        gens = net_space.generators
+        @test gens.i == [24, 9008]
+        branches = net_space.branches
+        @test branches.i == [1, 8151]
+        transformers = net_space.transformers
+        @test transformers.i == [1, 8462]
+        area_interchanges = net_space.area_interchanges
+        @test area_interchanges.i == [1]
+        @test isempty(net_space.two_terminal_dc)
+        @test isempty(net_space.vsc_dc)
+        switched_shunts = net_space.switched_shunts
+        @test switched_shunts.i == [2, 8460]
+        @test isempty(net_space.impedance_corrections)
+        @test isempty(net_space.multi_terminal_dc)
+        @test isempty(net_space.multi_section_lines)
+        zones = net_space.zones
+        # https://github.com/JuliaData/Parsers.jl/issues/115
+        @test_broken zones.zoname == ["FIRST", "ISOLATED"]
+        @test isempty(net_space.area_transfers)
+        owners = net_space.owners
+        # https://github.com/JuliaData/Parsers.jl/issues/115
+        @test_broken owners.owname == ["OWNER1"]
+        @test isempty(net_space.facts)
+
+        # test we allow specifying the delimiter manually
+        net_space_manual = parse_network("testfiles/spacedelim.raw"; delim=' ')
+        @test net_space.branches.j == net_space_manual.branches.j
+    end
+
     @testset "issues" begin
-        net = parse_network("testfiles/spacezero.raw")
-        @test length(net.buses) == 2
-        @test length(net.loads) == 1
+        sz = parse_network("testfiles/spacezero.raw")
+        @test length(sz.buses) == 2
+        @test length(sz.loads) == 1
+
+        qz = parse_network("testfiles/quotedzero.raw")
+        @test length(qz.buses) == 2
+        # These records are after the quoted zero
+        @test length(qz.switched_shunts) == 2
+        @test length(qz.zones) == 2
     end
 
     @testset "empty network" begin
