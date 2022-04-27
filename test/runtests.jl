@@ -462,8 +462,7 @@ using Test
 
         buses = net_space.buses
         @test length(buses) == 2
-        # https://github.com/JuliaData/Parsers.jl/issues/115
-        @test_broken buses.name = ["ABC", "ABCDEFGH"]
+        @test buses.name == ["ABC", "ABCDEFGH"]
 
         loads = net_space.loads
         @test loads.i == [7, 8478]
@@ -483,12 +482,10 @@ using Test
         @test isempty(net_space.multi_terminal_dc)
         @test isempty(net_space.multi_section_lines)
         zones = net_space.zones
-        # https://github.com/JuliaData/Parsers.jl/issues/115
-        @test_broken zones.zoname == ["FIRST", "ISOLATED"]
+        @test zones.zoname == ["FIRST", "ISOLATED"]
         @test isempty(net_space.area_transfers)
         owners = net_space.owners
-        # https://github.com/JuliaData/Parsers.jl/issues/115
-        @test_broken owners.owname == ["OWNER1"]
+        @test owners.owname == ["OWNER1"]
         @test isempty(net_space.facts)
 
         # test we allow specifying the delimiter manually
