@@ -2776,45 +2776,45 @@ common table operations see [TableOperations.jl](https://github.com/JuliaData/Ta
 # Fields
 $TYPEDFIELDS
 """
-struct Network
+Base.@kwdef struct Network
     "Version of the PSS/E data version given or detected when parsing."
     version::Int8
     "Case identification data."
-    caseid::CaseID
+    caseid::CaseID=CaseID()
     "Bus records."
-    buses::Buses
+    buses::Buses=(version == 33 ? Buses33() : Buses30())
     "Load records."
-    loads::Loads
+    loads::Loads=Loads()
     "Fixed Bus Shunt records."
-    fixed_shunts::Union{FixedShunts,Nothing}
+    fixed_shunts::Union{FixedShunts,Nothing}=(version == 33 ? FixedShunts() : nothing)
     "Generator records."
-    generators::Generators
+    generators::Generators=Generators()
     "Non-transformer Branch records."
-    branches::Branches
+    branches::Branches=(version == 33 ? Branches33() : Branches30())
     "Transformer records."
-    transformers::Transformers
+    transformers::Transformers=Transformers()
     "Area Interchange records."
-    area_interchanges::AreaInterchanges
+    area_interchanges::AreaInterchanges=AreaInterchanges()
     "Two-terminal DC Line records."
-    two_terminal_dc::TwoTerminalDCLines
+    two_terminal_dc::TwoTerminalDCLines=(version == 33 ? TwoTerminalDCLines33() : TwoTerminalDCLines30())
     "Voltage Source Converter DC Line records."
-    vsc_dc::VSCDCLines
+    vsc_dc::VSCDCLines=VSCDCLines()
     "Switched Shunt records."
-    switched_shunts::SwitchedShunts
+    switched_shunts::SwitchedShunts=(version == 33 ? SwitchedShunts33() : SwitchedShunts30())
     "Transformer impedance correction records."
-    impedance_corrections::ImpedanceCorrections
+    impedance_corrections::ImpedanceCorrections=ImpedanceCorrections()
     "Multi-terminal DC Line records."
-    multi_terminal_dc::MultiTerminalDCLines
+    multi_terminal_dc::MultiTerminalDCLines=MultiTerminalDCLines()
     "Multi-section line group records."
-    multi_section_lines::MultiSectionLineGroups
+    multi_section_lines::MultiSectionLineGroups=(version == 33 ? MultiSectionLineGroups33() : MultiSectionLineGroups30())
     "Zone records."
-    zones::Zones
+    zones::Zones=Zones()
     "Inter-area transfer records."
-    area_transfers::InterAreaTransfers
+    area_transfers::InterAreaTransfers=InterAreaTransfers()
     "Owner records."
-    owners::Owners
+    owners::Owners=Owners()
     "FACTS device records."
-    facts::FACTSDevices
+    facts::FACTSDevices=(version == 33 ? FACTSDevices33() : FACTSDevices30())
 end
 
 ###
