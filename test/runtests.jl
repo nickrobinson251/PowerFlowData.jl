@@ -506,32 +506,9 @@ using Test
     end
 
     @testset "empty network" begin
-
-        empty_net = Network(
-            30,
-            CaseID(),
-            Buses30(),
-            Loads(),
-            nothing,
-            Generators(),
-            Branches30(),
-            Transformers(),
-            AreaInterchanges(),
-            TwoTerminalDCLines30(),
-            VSCDCLines(),
-            SwitchedShunts30(),
-            ImpedanceCorrections(),
-            MultiTerminalDCLines(),
-            MultiSectionLineGroups30(),
-            Zones(),
-            InterAreaTransfers(),
-            Owners(),
-            FACTSDevices30(),
-        )
-
-        full_net = parse_network("testfiles/synthetic_data_v30.raw")
-
+        empty_net = Network(version=30)
         @test isempty(empty_net)
-        @test !isempty(full_net)
+        nonempty_net = Network(version=30, owners=Owners([1], ["Owner1"]))
+        @test !isempty(nonempty_net)
     end
 end
