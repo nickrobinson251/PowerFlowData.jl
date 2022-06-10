@@ -23,6 +23,16 @@ const OPTIONS_SPACE = Parsers.Options(
     ignorerepeated=true,
     wh1=0x00,
 )
+const OPTIONS_COMMENT = Parsers.Options(
+    sentinel=missing,
+    quoted=true,
+    openquotechar="/* [",
+    closequotechar="] */",
+    stripquoted=true,
+    delim=' ',
+    ignorerepeated=true,
+    wh1=0x00,
+)
 
 @inline getoptions(delim::Char) = ifelse(delim === ',', OPTIONS_COMMA, OPTIONS_SPACE)
 
@@ -57,7 +67,12 @@ or else it will be automatically detected when parsing the file.
 The delimiter can be specified with the `delim` keyword, like `delim=' '`,
 or else it will be automatically detected when parsing the file.
 """
-function parse_network(source; v::Union{Integer,Nothing}=nothing, delim::Union{Nothing,Char}=nothing)
+function parse_network(
+    source;
+    v::Union{Integer,Nothing}=nothing,
+    delim::Union{Nothing,Char}=nothing,
+    comments::Bool=false,
+)
     @debug 1 "source = $source, v = $v"
     bytes, pos, len = getbytes(source)
     d = delim === nothing ? detectdelim(bytes, pos, len) : delim
@@ -79,7 +94,7 @@ function parse_network(source; v::Union{Integer,Nothing}=nothing, delim::Union{N
     return if is_v33
         parse_network33(source, version, caseid, bytes, pos, len, options)
     else
-        parse_network30(source, version, caseid, bytes, pos, len, options)
+        parse_network30(source, version, caseid, bytes, pos, len, options; comments)
     end
 end
 
@@ -126,8 +141,8 @@ function parse_network33(source, version, caseid, bytes, pos, len, options)
     )
 end
 
-function parse_network30(source, version, caseid, bytes, pos, len, options)
-    buses, pos = parse_records!(Buses30(len÷1000), bytes, pos, len, options)
+function parse_network30(source, version, caseid, bytes, pos, len, options; comments)
+    buses, pos = parse_records!(Buses30(len÷1000), bytes, pos, len, options, comments)
     nbuses = length(buses)
     loads, pos = parse_records!(Loads(nbuses), bytes, pos, len, options)
     fixed_shunts = nothing
@@ -240,6 +255,32 @@ end
             rec, pos, code = parse_value!(rec, $col, $T, bytes, pos, len, options)
         end)
     end
+    # @show block
+    return block
+end
+
+###
+### Buses
+###
+
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Buses}
+    block = Expr(:block)
+    N = fieldcount(R)
+    for col in 1:(N - 2)
+        T = eltype(fieldtype(R, col))
+        push!(block.args, quote
+            rec, pos, code = parse_value!(rec, $col, $T, bytes, pos, len, options)
+        end)
+    end
+    Ty = eltype(fieldtype(R, N - 1))
+    push!(block.args, quote
+        rec, pos, code = parse_value!(rec, $(N - 1), $T, bytes, pos, len, options)
+    end)
+    Tz = eltype(fieldtype(R, N))
+    push!(getfield(rec, $col), missing)
+    push!(block.args, quote
+        rec, pos, code = parse_value!(rec, $N, $T, bytes, pos, len, options)
+    end)
     # @show block
     return block
 end
