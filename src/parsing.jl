@@ -234,7 +234,7 @@ function parse_value(::Type{T}, bytes, pos, len, options) where {T}
     code = res.code
     if invalid(code)
         if !(newline(code) && invaliddelimiter(code))  # not due to end-of-line comments
-            @warn codes(res.code) pos
+            # @warn codes(res.code) pos
         end
     end
     pos += res.tlen
@@ -247,7 +247,7 @@ function parse_value!(rec, col::Int, ::Type{T}, bytes, pos, len, options) where 
     return rec, pos, code
 end
 
-@generated function parse_row!(rec::R, bytes, pos, len, options, _) where {R <: Records}
+@generated function parse_row!(rec::R, bytes, pos, len, options, c) where {R <: Records}
     block = Expr(:block)
     for col in 1:fieldcount(R)
         T = eltype(fieldtype(R, col))
@@ -263,7 +263,7 @@ end
 ### Buses
 ###
 
-@generated function parse_row!(rec::R, bytes, pos, len, options, comments) where {R <: Buses}
+@generated function parse_row!(rec::R, bytes, pos, len, options, comments) where {R <: Buses30}
     block = Expr(:block)
     N = fieldcount(R)
     for col in 1:(N - 2)
@@ -272,18 +272,20 @@ end
             rec, pos, code = parse_value!(rec, $col, $T, bytes, pos, len, options)
         end)
     end
-    Ty = eltype(fieldtype(R, N - 1))
+    Ny = N - 1
+    Ty = eltype(fieldtype(R, Ny))
     Tz = eltype(fieldtype(R, N))
     push!(block.args, quote
         if comments
-            (rec, pos, code) = parse_value!(rec, $(N - 1), $Ty, bytes, pos, len, OPTIONS_COMMENT)
+            (rec, pos, code) = parse_value!(rec, $Ny, $Ty, bytes, pos, len, OPTIONS_COMMENT)
             (rec, pos, code) = parse_value!(rec, $N, $Tz, bytes, pos, len, OPTIONS_COMMENT)
         else
-            (rec, pos, code) = parse_value!(rec, $(N - 1), $Ty, bytes, pos, len, options)
+            (rec, pos, code) = parse_value!(rec, $Ny, $Ty, bytes, pos, len, options)
             push!(getfield(rec, $N), missing)
         end
     end)
-    # @show block
+    push!(block.args, :(return rec, pos))
+    @show block
     return block
 end
 
@@ -377,7 +379,7 @@ end
 # - Line 5 only exists for T3 data
 # We determine data is T2 if there is a newline after 3 entries of line 2, else it's T3.
 # This means T2 data with a comment after the last entry on line 2 will fool us.
-@generated function parse_row!(rec::R, bytes, pos, len, options, _) where {R <: Transformers}
+@generated function parse_row!(rec::R, bytes, pos, len, options, c) where {R <: Transformers}
     block = Expr(:block)
     # parse row 1
     append!(block.args, _parse_values(R, 1, EOL_COLS[1]-7))
@@ -421,7 +423,7 @@ const N_SPECIAL = IdDict(
     Branches33 => 6, # 3*2
 )
 
-@generated function parse_row!(rec::R, bytes, pos, len, options, _) where {R <: Union{SwitchedShunts, ImpedanceCorrections, Branches}}
+@generated function parse_row!(rec::R, bytes, pos, len, options, c) where {R <: Union{SwitchedShunts, ImpedanceCorrections, Branches}}
     block = Expr(:block)
     N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
@@ -459,25 +461,25 @@ end
 ### MultiTerminalDCLines
 ###
 
-function parse_row!(rec::R, bytes, pos, len, options, _) where {I, R <: MultiTerminalDCLines{I}}
+function parse_row!(rec::R, bytes, pos, len, options, c) where {I, R <: MultiTerminalDCLines{I}}
     line_id, pos = parse_idrow(I, bytes, pos, len, options)
 
     nconv = line_id.nconv
     converters = ACConverters(nconv)
     for _ in 1:nconv
-        converters, pos = parse_row!(converters, bytes, pos, len, options, _)
+        converters, pos = parse_row!(converters, bytes, pos, len, options, c)
     end
 
     ndcbs = line_id.ndcbs
     dc_buses = DCBuses(ndcbs)
     for _ in 1:ndcbs
-        dc_buses, pos = parse_row!(dc_buses, bytes, pos, len, options, _)
+        dc_buses, pos = parse_row!(dc_buses, bytes, pos, len, options, c)
     end
 
     ndcln = line_id.ndcln
     dc_links = DCLinks(ndcln)
     for _ in 1:ndcln
-        dc_links, pos = parse_row!(dc_links, bytes, pos, len, options, _)
+        dc_links, pos = parse_row!(dc_links, bytes, pos, len, options, c)
     end
     line = MultiTerminalDCLine(line_id, converters, dc_buses, dc_links)
     push!(rec.lines, line)

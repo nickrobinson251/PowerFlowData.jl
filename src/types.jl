@@ -150,7 +150,7 @@ struct Buses30 <: Buses
     End-of-line comments. Not part of the official PSS/E format specification, but
     present in some files nonetheless.
     """
-    comment::Vector{Union{String31,Missing}}
+    comment::Vector{Union{InlineString31,Missing}}
 end
 
 """
