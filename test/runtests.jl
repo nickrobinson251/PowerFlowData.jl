@@ -34,6 +34,10 @@ using Test
         @test length(recs) == 3
         @test size(recs) == (3, 2)
 
+        @test Tables.rowtable(recs)[1] == (x1=1, yy=3.14)
+        @test NamedTuple(first(Tables.rows(recs))) == (x1=1, yy=3.14)
+        @test first(Tables.namedtupleiterator(recs)) == (x1=1, yy=3.14)
+
         df = DataFrame(recs)
         @test df isa DataFrame
         @test size(df) == (3, 2)
@@ -503,6 +507,16 @@ using Test
         # These records are after the quoted zero
         @test length(qz.switched_shunts) == 2
         @test length(qz.zones) == 2
+    end
+
+    @testset "`Tables.namedtupleiterator(::Records)`" begin
+        # https://github.com/nickrobinson251/PowerFlowData.jl/issues/76
+        net = parse_network("testfiles/synthetic_data_v30.raw")
+        buses = net.buses
+        @test first(Tables.namedtupleiterator(buses)).i == 111
+        # Transformers has own `Tables.schema` definition so needs testing specifically.
+        transformers = net.transformers
+        @test first(Tables.namedtupleiterator(transformers)).i == 112
     end
 
     @testset "empty network" begin

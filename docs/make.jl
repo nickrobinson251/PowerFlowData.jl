@@ -1,5 +1,6 @@
 using PowerFlowData
 using Documenter
+using Tables
 
 DocMeta.setdocmeta!(PowerFlowData, :DocTestSetup, :(using PowerFlowData); recursive=true)
 

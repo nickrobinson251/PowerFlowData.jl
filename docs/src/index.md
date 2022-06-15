@@ -34,7 +34,7 @@ Comma delimited files `delim=','` and space delimited files `delim=' '` are curr
 Usually your data will be in a file, and you'd read it with `parse_network("file.raw")`,
 but here we'll pass in the data directly, to show how it matches to the output:
 
-```@repl
+```@repl example1
 using PowerFlowData, DataFrames
 data = IOBuffer("""
     0,   100.00          / PSS/E-30.3    WED, SEP 15 2021  21:04
@@ -48,4 +48,13 @@ data = IOBuffer("""
 network = parse_network(data; v=30);
 NamedTuple(network.caseid)  # Case Identification data is a single row.
 DataFrame(network.buses)    # Bus data, and all other data, is a table.
+```
+
+For working with the tabular data within a [`Network`](@ref) directly you can use Tables.jl.
+For example, to iterate the [`Buses`](@ref):
+```@repl example1
+using Tables
+for bus in Tables.rows(network.buses)
+    @show bus.name
+end
 ```

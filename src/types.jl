@@ -59,7 +59,7 @@ Tables.columnaccess(::Type{<:Records}) = true
 Tables.columns(x::Records) = x
 Tables.getcolumn(x::Records, i::Int) = getfield(x, i)
 Tables.columnnames(R::Type{<:Records}) = fieldnames(R)
-Tables.schema(x::R) where {R <: Records} = Tables.Schema(fieldnames(R), fieldtypes(R))
+Tables.schema(x::R) where {R <: Records} = Tables.Schema(fieldnames(R), map(eltype, fieldtypes(R)))
 Tables.rowcount(x::Records) = length(x)  # faster than going via `columnnames`
 Base.length(x::Records) = length(getfield(x, 1)::Vector)
 Base.size(x::R) where {R <: Records} = (length(x), fieldcount(R))
@@ -1247,7 +1247,7 @@ end
 
 function Tables.schema(x::R) where {R <: Transformers}
     cols = Tables.columnnames(x)
-    typs = fieldtype.(R, cols)
+    typs = eltype.(fieldtype.(R, cols))
     return Tables.Schema(cols, typs)
 end
 
