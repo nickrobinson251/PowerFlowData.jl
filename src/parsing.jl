@@ -23,16 +23,6 @@ const OPTIONS_SPACE = Parsers.Options(
     ignorerepeated=true,
     wh1=0x00,
 )
-const OPTIONS_COMMENT = Parsers.Options(
-    sentinel=missing,
-    quoted=true,
-    openquotechar="/* [",
-    closequotechar="] */",
-    stripquoted=true,
-    delim=' ',
-    ignorerepeated=true,
-    wh1=0x00,
-)
 
 @inline getoptions(delim::Char) = ifelse(delim === ',', OPTIONS_COMMA, OPTIONS_SPACE)
 
@@ -67,12 +57,7 @@ or else it will be automatically detected when parsing the file.
 The delimiter can be specified with the `delim` keyword, like `delim=' '`,
 or else it will be automatically detected when parsing the file.
 """
-function parse_network(
-    source;
-    v::Union{Integer,Nothing}=nothing,
-    delim::Union{Nothing,Char}=nothing,
-    comments::Bool=false,
-)
+function parse_network(source; v::Union{Integer,Nothing}=nothing, delim::Union{Nothing,Char}=nothing)
     @debug 1 "source = $source, v = $v"
     bytes, pos, len = getbytes(source)
     d = delim === nothing ? detectdelim(bytes, pos, len) : delim
@@ -94,7 +79,7 @@ function parse_network(
     return if is_v33
         parse_network33(source, version, caseid, bytes, pos, len, options)
     else
-        parse_network30(source, version, caseid, bytes, pos, len, options; comments)
+        parse_network30(source, version, caseid, bytes, pos, len, options)
     end
 end
 
@@ -141,8 +126,8 @@ function parse_network33(source, version, caseid, bytes, pos, len, options)
     )
 end
 
-function parse_network30(source, version, caseid, bytes, pos, len, options; comments)
-    buses, pos = parse_records!(Buses30(len÷1000), bytes, pos, len, options, comments)
+function parse_network30(source, version, caseid, bytes, pos, len, options)
+    buses, pos = parse_records!(Buses30(len÷1000), bytes, pos, len, options)
     nbuses = length(buses)
     loads, pos = parse_records!(Loads(nbuses), bytes, pos, len, options)
     fixed_shunts = nothing
@@ -190,7 +175,7 @@ end
     peekbyte(bytes, pos) == UInt8('\'') && !eof(bytes, pos+1, len) && peekbyte(bytes, pos+1) == UInt8('0')
 end
 
-function parse_records!(rec::R, bytes, pos, len, options, comments=false)::Tuple{R, Int} where {R <: Records}
+function parse_records!(rec::R, bytes, pos, len, options)::Tuple{R, Int} where {R <: Records}
     # Records terminated by specifying a bus number of zero or `Q`.
     while !(
         eof(bytes, pos, len) ||
@@ -198,7 +183,7 @@ function parse_records!(rec::R, bytes, pos, len, options, comments=false)::Tuple
         peekbyte(bytes, pos) == UInt8(' ') && !eof(bytes, pos+1, len) && _iszero(bytes, pos+1, len) ||
         peekbyte(bytes, pos) == UInt8('Q')
     )
-        _, pos = parse_row!(rec, bytes, pos, len, options, comments)
+        _, pos = parse_row!(rec, bytes, pos, len, options)
     end
     pos = next_line(bytes, pos, len, options)  # Move past a "0 bus" line.
     @debug 1 "Parsed $R: nrows = $(length(rec)), pos = $pos"
@@ -234,7 +219,7 @@ function parse_value(::Type{T}, bytes, pos, len, options) where {T}
     code = res.code
     if invalid(code)
         if !(newline(code) && invaliddelimiter(code))  # not due to end-of-line comments
-            # @warn codes(res.code) pos
+            @warn codes(res.code) pos
         end
     end
     pos += res.tlen
@@ -247,7 +232,7 @@ function parse_value!(rec, col::Int, ::Type{T}, bytes, pos, len, options) where 
     return rec, pos, code
 end
 
-@generated function parse_row!(rec::R, bytes, pos, len, options, c) where {R <: Records}
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Records}
     block = Expr(:block)
     for col in 1:fieldcount(R)
         T = eltype(fieldtype(R, col))
@@ -263,29 +248,30 @@ end
 ### Buses
 ###
 
-@generated function parse_row!(rec::R, bytes, pos, len, options, comments) where {R <: Buses30}
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Buses30}
     block = Expr(:block)
-    N = fieldcount(R)
-    for col in 1:(N - 2)
+    n = fieldcount(R)
+    for col in 1:(n - 2)
         T = eltype(fieldtype(R, col))
         push!(block.args, quote
             rec, pos, code = parse_value!(rec, $col, $T, bytes, pos, len, options)
         end)
     end
-    Ny = N - 1
-    Ty = eltype(fieldtype(R, Ny))
-    Tz = eltype(fieldtype(R, N))
+    m = n - 1
+    Tm = eltype(fieldtype(R, m))
+    Tn = eltype(fieldtype(R, n))
     push!(block.args, quote
-        if comments
-            (rec, pos, code) = parse_value!(rec, $Ny, $Ty, bytes, pos, len, OPTIONS_COMMENT)
-            (rec, pos, code) = parse_value!(rec, $N, $Tz, bytes, pos, len, OPTIONS_COMMENT)
+        # @show (rec, pos, code)
+        pos = checkdelim!(bytes, pos, len, OPTIONS_SPACE)
+        (rec, pos, code) = parse_value!(rec, $m, $Tm, bytes, pos, len, OPTIONS_SPACE)
+        if !newline(code)
+            (rec, pos, code) = parse_value!(rec, $n, $Tn, bytes, pos, len, options)
         else
-            (rec, pos, code) = parse_value!(rec, $Ny, $Ty, bytes, pos, len, options)
-            push!(getfield(rec, $N), missing)
+            push!(getfield(rec, $n)::Vector{$Tn}, missing)
         end
     end)
     push!(block.args, :(return rec, pos))
-    @show block
+    # @show block
     return block
 end
 
@@ -379,7 +365,7 @@ end
 # - Line 5 only exists for T3 data
 # We determine data is T2 if there is a newline after 3 entries of line 2, else it's T3.
 # This means T2 data with a comment after the last entry on line 2 will fool us.
-@generated function parse_row!(rec::R, bytes, pos, len, options, c) where {R <: Transformers}
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Transformers}
     block = Expr(:block)
     # parse row 1
     append!(block.args, _parse_values(R, 1, EOL_COLS[1]-7))
@@ -423,7 +409,7 @@ const N_SPECIAL = IdDict(
     Branches33 => 6, # 3*2
 )
 
-@generated function parse_row!(rec::R, bytes, pos, len, options, c) where {R <: Union{SwitchedShunts, ImpedanceCorrections, Branches}}
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Union{SwitchedShunts, ImpedanceCorrections, Branches}}
     block = Expr(:block)
     N = fieldcount(R) - N_SPECIAL[R]
     append!(block.args, _parse_values(R, 1, N))
@@ -444,7 +430,7 @@ end
 ###
 
 @generated function parse_row!(
-    rec::R, bytes, pos, len, options, _
+    rec::R, bytes, pos, len, options
 ) where {R <: Union{Loads,Generators,MultiSectionLineGroups}}
     block = Expr(:block)
     N = fieldcount(R) - N_SPECIAL[R]
@@ -461,25 +447,25 @@ end
 ### MultiTerminalDCLines
 ###
 
-function parse_row!(rec::R, bytes, pos, len, options, c) where {I, R <: MultiTerminalDCLines{I}}
+function parse_row!(rec::R, bytes, pos, len, options) where {I, R <: MultiTerminalDCLines{I}}
     line_id, pos = parse_idrow(I, bytes, pos, len, options)
 
     nconv = line_id.nconv
     converters = ACConverters(nconv)
     for _ in 1:nconv
-        converters, pos = parse_row!(converters, bytes, pos, len, options, c)
+        converters, pos = parse_row!(converters, bytes, pos, len, options)
     end
 
     ndcbs = line_id.ndcbs
     dc_buses = DCBuses(ndcbs)
     for _ in 1:ndcbs
-        dc_buses, pos = parse_row!(dc_buses, bytes, pos, len, options, c)
+        dc_buses, pos = parse_row!(dc_buses, bytes, pos, len, options)
     end
 
     ndcln = line_id.ndcln
     dc_links = DCLinks(ndcln)
     for _ in 1:ndcln
-        dc_links, pos = parse_row!(dc_links, bytes, pos, len, options, c)
+        dc_links, pos = parse_row!(dc_links, bytes, pos, len, options)
     end
     line = MultiTerminalDCLine(line_id, converters, dc_buses, dc_links)
     push!(rec.lines, line)

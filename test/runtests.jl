@@ -497,6 +497,22 @@ using Test
         @test net_space.branches.j == net_space_manual.branches.j
     end
 
+    @testset "End-of-line comments" begin
+        net_eol = parse_network("testfiles/eolcomments.raw")
+
+        buses = net_eol.buses
+        @test length(buses) == 2
+        @test buses.i == [10010, 337918]  # first col
+        @test buses.owner == [1, 1]   # last col before comments
+        @test all(contains.(buses.comment, ["NOBO     1", "NAU_E2   1"]))
+
+        loads = net_eol.loads
+        @test length(loads) == 1
+        @test loads.i == [10010]  # first col
+        @test loads.owner == [1]  # last non-missing col
+        @test isequal(loads.intrpt, [missing]) # last col
+    end
+
     @testset "issues" begin
         sz = parse_network("testfiles/spacezero.raw")
         @test length(sz.buses) == 2
