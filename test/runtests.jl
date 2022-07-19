@@ -500,6 +500,7 @@ using Test
     @testset "End-of-line comments" begin
         net_eol = parse_network("testfiles/eolcomments.raw")
 
+        # Only `Buses30` parse trailing EOL comments.
         buses = net_eol.buses
         @test length(buses) == 2
         @test buses.i == [10010, 337918]  # first col

@@ -248,9 +248,20 @@ end
 ### Buses
 ###
 
+# In v30 files, we've seen trailing end-of-line comments. These can be present
+# in any section, but so far we have only had a use-case for the comments in the
+# buses section.
+# See https://github.com/nickrobinson251/PowerFlowData.jl/issues/27
+#
+# The currently handles data which looks like:
+#  111,'STBC      ',161.00,1,    0.00,    0.00,227,   1,1.09814,  -8.327,  1 /* [STBC   1   ] */
+# And does _not_ handle data with a comma before the comment like:
+#  111,'STBC      ',161.00,1,    0.00,    0.00,227,   1,1.09814,  -8.327,  1, /* [STBC   1   ] */
 @generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: Buses30}
     block = Expr(:block)
     n = fieldcount(R)
+    # The last column is the comment. We need to handle the second-last column separately
+    # too in order to be sure we stop parsing it before hitting the comment.
     for col in 1:(n - 2)
         T = eltype(fieldtype(R, col))
         push!(block.args, quote
@@ -262,12 +273,15 @@ end
     Tn = eltype(fieldtype(R, n))
     push!(block.args, quote
         # @show (rec, pos, code)
+		# Assume no comma delim before the comment, so need to set whitespace as delim.
+		# And move to next non-whitespace character, so we don't immediately hit a delim.
         pos = checkdelim!(bytes, pos, len, OPTIONS_SPACE)
         (rec, pos, code) = parse_value!(rec, $m, $Tm, bytes, pos, len, OPTIONS_SPACE)
-        if !newline(code)
-            (rec, pos, code) = parse_value!(rec, $n, $Tn, bytes, pos, len, options)
-        else
+        if newline(code)
+			# If we hit a newline before delimiter there is no trailing comment.
             push!(getfield(rec, $n)::Vector{$Tn}, missing)
+        else
+            (rec, pos, code) = parse_value!(rec, $n, $Tn, bytes, pos, len, options)
         end
     end)
     push!(block.args, :(return rec, pos))
