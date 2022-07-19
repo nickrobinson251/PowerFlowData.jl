@@ -146,6 +146,11 @@ struct Buses30 <: Buses
     See [`Owners`](@ref).
     """
     owner::Vector{OwnerNum}
+    """
+    End-of-line comments. Not part of the official PSS/E format specification, but
+    present in some files nonetheless.
+    """
+    comment::Vector{Union{InlineString31,Missing}}
 end
 
 """
