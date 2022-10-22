@@ -23,6 +23,18 @@ const OPTIONS_SPACE = Parsers.Options(
     ignorerepeated=true,
     wh1=0x00,
 )
+# These Options are for supporting extracting end-of-line comments like
+#  `/* [STBC   1   ] */` which we want to parse to `STBC   1`.
+const OPTIONS_COMMENT = Parsers.Options(
+    sentinel=missing,
+    quoted=true,
+    openquotechar="/* [",
+    closequotechar="] */",
+    stripquoted=true,
+    delim=' ',
+    ignorerepeated=true,
+    wh1=0x00,
+)
 
 @inline getoptions(delim::Char) = ifelse(delim === ',', OPTIONS_COMMA, OPTIONS_SPACE)
 
@@ -281,7 +293,7 @@ end
 			# If we hit a newline before delimiter there is no trailing comment.
             push!(getfield(rec, $n)::Vector{$Tn}, missing)
         else
-            (rec, pos, code) = parse_value!(rec, $n, $Tn, bytes, pos, len, options)
+            (rec, pos, code) = parse_value!(rec, $n, $Tn, bytes, pos, len, OPTIONS_COMMENT)
         end
     end)
     push!(block.args, :(return rec, pos))
