@@ -94,7 +94,7 @@ using Test
         @test startswith(repr(mime, net.caseid), "CaseID: (ic = 0, sbase = 100.0, ")
 
         @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 2 records"
-        @test startswith(repr(mime, net.buses), "Buses with 2 records, 11 columns:\n──")
+        @test startswith(repr(mime, net.buses), "Buses with 2 records, 12 columns:\n──")
 
         mt_dc_line = net.multi_terminal_dc.lines[1]
         @test eval(Meta.parse(repr(mt_dc_line))) isa MultiTerminalDCLine
@@ -495,6 +495,23 @@ using Test
         # test we allow specifying the delimiter manually
         net_space_manual = parse_network("testfiles/spacedelim.raw"; delim=' ')
         @test net_space.branches.j == net_space_manual.branches.j
+    end
+
+    @testset "End-of-line comments" begin
+        net_eol = parse_network("testfiles/eolcomments.raw")
+
+        # Only `Buses30` parse trailing EOL comments.
+        buses = net_eol.buses
+        @test length(buses) == 2
+        @test buses.i == [10010, 337918]  # first col
+        @test buses.owner == [1, 1]   # last col before comments
+        @test all(contains.(buses.comment, ["NOBO     1", "NAU_E2   1"]))
+
+        loads = net_eol.loads
+        @test length(loads) == 1
+        @test loads.i == [10010]  # first col
+        @test loads.owner == [1]  # last non-missing col
+        @test isequal(loads.intrpt, [missing]) # last col
     end
 
     @testset "issues" begin
