@@ -4,6 +4,7 @@ using DocStringExtensions
 using InlineStrings: InlineString1, InlineString3, InlineString15
 using Parsers: Parsers, xparse, checkdelim!
 using Parsers: codes, eof, invalid, invaliddelimiter, newline, valueok, peekbyte
+using PrecompileTools: @setup_workload, @compile_workload
 using PrettyTables: pretty_table
 using Tables
 
@@ -23,5 +24,6 @@ export FACTSDevices, FACTSDevices30, FACTSDevices33
 include("debug.jl")
 include("types.jl")
 include("parsing.jl")
+include("precompile.jl")
 
 end  # module
