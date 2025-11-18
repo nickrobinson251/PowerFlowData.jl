@@ -2921,17 +2921,24 @@ function Base.show(io::IO, mime::MIME"text/plain", x::R) where {R <: Records}
         print(io, " with $(length(x)) records,")
         print(io, " $(length(Tables.columnnames(x))) columns:\n")
         (vsize, hsize) = displaysize(io)
+        # v3 API changes:
+        # - header -> column_labels
+        # - crop -> fit_table_in_display_horizontally/vertically
+        # - newline_at_end -> new_line_at_end
+        # - vcrop_mode -> vertical_crop_mode
+        # - vlines is now in table_format
+        # - alignment_anchor_regex: apply to all columns (use Vector{Regex} format)
         pretty_table(
             io, x;
             alignment_anchor_fallback=:r,  # align right as best for integers
-            alignment_anchor_regex=Dict(0 => [r"\."]),  # align floating point numbers
+            alignment_anchor_regex=[r"\."],  # align floating point numbers on decimal point
+            column_labels=collect(String, string.(Tables.columnnames(x))),  # v3 API
             compact_printing=true,
-            crop=:both,
             display_size=(max(1, vsize-3), hsize), # save some vertical space for summary
-            header=collect(Symbol, Tables.columnnames(x)),
-            newline_at_end=false,
-            vcrop_mode=:middle,  # show first and last rows
-            vlines=Int[],  # no vertical lines
+            fit_table_in_display_horizontally=true,  # v3 API (replaces crop)
+            fit_table_in_display_vertically=true,   # v3 API (replaces crop)
+            new_line_at_end=false,  # v3 API (renamed from newline_at_end)
+            vertical_crop_mode=:middle,  # v3 API (show first and last rows)
         )
     end
     return nothing

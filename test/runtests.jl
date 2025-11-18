@@ -94,7 +94,7 @@ using Test
         @test startswith(repr(mime, net.caseid), "CaseID: (ic = 0, sbase = 100.0, ")
 
         @test repr(mime, net.buses; context=(:compact => true)) == "Buses with 2 records"
-        @test startswith(repr(mime, net.buses), "Buses with 2 records, 11 columns:\n──")
+        @test startswith(repr(mime, net.buses), "Buses with 2 records, 11 columns:\n┌")
 
         mt_dc_line = net.multi_terminal_dc.lines[1]
         @test eval(Meta.parse(repr(mt_dc_line))) isa MultiTerminalDCLine
