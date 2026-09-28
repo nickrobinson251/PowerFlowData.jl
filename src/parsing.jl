@@ -298,8 +298,15 @@ function _parse_maybezero(R, col1, col2)
             push!(getfield(rec, $col1), zero($T1))
             push!(getfield(rec, $col2), zero($T2))
         else
-            (rec, pos, code) = parse_value!(rec, $col1, $T1, bytes, pos, len, options)
-            (rec, pos, code) = parse_value!(rec, $col2, $T2, bytes, pos, len, options)
+            (val1, pos, code) = parse_value(nonmissingtype($T1), bytes, pos, len, options)
+            if sentinel(code) && newline(code)
+                # the record ended with a trailing delimiter, e.g. `..., 50.00,`
+                push!(getfield(rec, $col1), zero($T1))
+                push!(getfield(rec, $col2), zero($T2))
+            else
+                push!(getfield(rec, $col1), val1)
+                (rec, pos, code) = parse_value!(rec, $col2, $T2, bytes, pos, len, options)
+            end
         end
     end
 end
@@ -357,11 +364,11 @@ end
 ###
 
 const N_SPECIAL = IdDict(
-    # SwitchedShunts can have anywhere between 1 - 8 `N` and `B` values in the data itself,
-    # if n2, b2, ..., n8, b8 are not present, we set them to zero.
-    # i.e. the last 14 = 7(n) + 7(b) columns reqire special handling.
-    SwitchedShunts30 => 14,
-    SwitchedShunts33 => 14,
+    # SwitchedShunts can have anywhere between 0 - 8 `N` and `B` values in the data itself,
+    # if n1, b1, ..., n8, b8 are not present, we set them to zero.
+    # i.e. the last 16 = 8(n) + 8(b) columns require special handling.
+    SwitchedShunts30 => 16,
+    SwitchedShunts33 => 16,
     # ImpedanceCorrections can have anywhere between 2 - 11 `T` and `F` values in the data itself,
     # if t3, f3, ..., t11, f11 are not present, we set them to zero.
     # i.e. the last 18 = 9(t) + 9(f) columns reqire special handling.

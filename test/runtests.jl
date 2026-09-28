@@ -509,6 +509,24 @@ using Test
         @test length(qz.zones) == 2
     end
 
+    @testset "SwitchedShunts record ending in a trailing comma" begin
+        # A record without N/B blocks may end in a trailing comma: n1, b1, ..., n8, b8
+        # are zero, and the next record is not read as its blocks.
+        file = "testfiles/trailing_comma_shunts.raw"
+        crlf = IOBuffer(replace(read(file, String), "\n" => "\r\n"))
+        for source in (file, crlf)
+            net = @test_logs parse_network(source)
+            switched_shunts = net.switched_shunts
+            @test length(switched_shunts) == 2
+            @test switched_shunts.i == [1, 2]
+            @test switched_shunts.binit == [50.0, 35.0]
+            @test switched_shunts.n1 == [0, 1]
+            @test switched_shunts.b1 == [0.0, 35.0]
+            @test switched_shunts.n8 == [0, 0]
+            @test switched_shunts.b8 == [0.0, 0.0]
+        end
+    end
+
     @testset "`Tables.namedtupleiterator(::Records)`" begin
         # https://github.com/nickrobinson251/PowerFlowData.jl/issues/76
         net = parse_network("testfiles/synthetic_data_v30.raw")
