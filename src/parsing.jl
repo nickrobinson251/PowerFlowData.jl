@@ -413,6 +413,23 @@ end
 end
 
 ###
+### VSCDCLines
+###
+
+# The first line of a VSCDCLines record holds `name, mdc, rdc, o1, f1` and then optionally
+# `o2, f2, o3, f3, o4, f4`; absent owners are zero. Lines 2 and 3 hold the two converters.
+@generated function parse_row!(rec::R, bytes, pos, len, options) where {R <: VSCDCLines}
+    block = Expr(:block)
+    append!(block.args, _parse_values(R, 1, 5))
+    for col in 6:2:10
+        push!(block.args, _parse_maybezero(R, col, col + 1))
+    end
+    append!(block.args, _parse_values(R, 12, fieldcount(R)))
+    push!(block.args, :(return rec, pos))
+    return block
+end
+
+###
 ### MultiTerminalDCLines
 ###
 

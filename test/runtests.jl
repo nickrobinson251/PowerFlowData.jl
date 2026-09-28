@@ -519,6 +519,32 @@ using Test
         @test first(Tables.namedtupleiterator(transformers)).i == 112
     end
 
+    @testset "VSCDCLines with absent owners" begin
+        # The first line of a VSC record may end before `o2, f2, ..., o4, f4`;
+        # absent owners are zero and the converter lines are still read as converters.
+        v30 = read("testfiles/synthetic_data_v30.raw", String)
+        row = "'line 1 ', 1, 0.0000, 1, 1.0, 0, 1.0, 0, 1.0, 0, 1.0"
+        @test occursin(row, v30)
+        for (line, o2, f2) in (
+            ("'line 1 ', 1, 0.0000, 1, 1.0", 0, 0.0),
+            ("'line 1 ', 1, 0.0000, 1, 1.0, 2, 0.5", 2, 0.5),
+        )
+            net = @test_logs parse_network(IOBuffer(replace(v30, row => line)))
+            vsc_dc = net.vsc_dc
+            @test vsc_dc.name == ["line 1"]
+            @test vsc_dc.o1 == [1]
+            @test vsc_dc.f1 == [1.0]
+            @test vsc_dc.o2 == [o2]
+            @test vsc_dc.f2 == [f2]
+            @test vsc_dc.o3 == vsc_dc.o4 == [0]
+            @test vsc_dc.f3 == vsc_dc.f4 == [0.0]
+            @test vsc_dc.ibus1 == [1117]
+            @test vsc_dc.rmpct1 == [100.0]
+            @test vsc_dc.ibus2 == [114]
+            @test vsc_dc.rmpct2 == [100.0]
+        end
+    end
+
     @testset "empty network" begin
         empty_net = Network(version=30)
         @test isempty(empty_net)

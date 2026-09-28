@@ -575,7 +575,7 @@ for v in (30, 33)
         o1::Vector{OwnerNum}
         """
         Fraction of total ownership assigned to owner ``O_i``; each ``F_i`` must be positive.
-        The ``fi` values are normalized such that they sum to 1.0 before they are placed in the working case.
+        The `fi` values are normalized such that they sum to 1.0 before they are placed in the working case.
         By default, each `fi` is 1.0.
         """
         f1::Vector{Float64}
@@ -1650,11 +1650,11 @@ struct VSCDCLines <: Records
     By default, each F_i is 1.0.
     """
     f1::Vector{Float64}
-    # TODO: are o2, f2, o3, f3, o4, f4 always present?
     """
     An owner number; (1 through the maximum number of owners at the current size level).
     See [`Owners`](@ref).
     By default, `o2` is zero.
+    `o2`, `f2`, `o3`, `f3`, `o4` and `f4` may be absent from the data, in which case they are zero.
     """
     o2::Vector{OwnerNum}
     """
@@ -1668,7 +1668,7 @@ struct VSCDCLines <: Records
     """
     o3::Vector{OwnerNum}
     """
-    The fraction of total ownership assigned to owner `o2`; must be positive.
+    The fraction of total ownership assigned to owner `o3`; must be positive.
     By default, `f3` is 1.0.
     """
     f3::Vector{Float64}
@@ -1678,7 +1678,7 @@ struct VSCDCLines <: Records
     """
     o4::Vector{OwnerNum}
     """
-    The fraction of total ownership assigned to owner `o2`; must be positive.
+    The fraction of total ownership assigned to owner `o4`; must be positive.
     By default, `f4` is 1.0.
     """
     f4::Vector{Float64}
